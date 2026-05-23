@@ -27,14 +27,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ani1"
-version = "0.1.0"
-dependencies = [
- "image",
- "miniz_oxide 0.9.1",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.102"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -322,6 +314,14 @@ checksum = "ee8cfcc411d9adbbaba82fb72661cc1bcca13e8bba98b364e62b2dba8f960159"
 dependencies = [
  "color_quant",
  "weezl",
+]
+
+[[package]]
+name = "graphics"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "miniz_oxide 0.9.1",
 ]
 
 [[package]]
