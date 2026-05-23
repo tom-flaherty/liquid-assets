@@ -1,4 +1,5 @@
-use log::{error, info, warn};
+use image::{EncodableLayout, ImageReader};
+use log::error;
 /// Expected structure for input directory:
 ///
 /// input
@@ -19,80 +20,25 @@ use log::{error, info, warn};
 /// └── asset_name3.png
 ///
 /// Non-png files can be included, e.g. notes or a source gif. These will be ignored.
-use std::{
-    fs::{self, DirEntry, ReadDir},
-    path::Path,
-    process::exit,
-};
+use std::{fs, path::Path, process::exit};
 
 struct Args {
-    assets_source_dir: String,
+    assets_input_dir: String,
 }
-
-// #[derive(Debug)]
-// struct AssetInfo {
-//     path: DirEntry,
-//     name: String,
-//     width: u16,
-//     height: u16,
-//     asset_type: AssetType,
-// }
-
-// #[derive(Debug)]
-// enum AssetType {
-//     Static,
-//     Animated(AnimationInfo),
-// }
-
-// #[derive(Debug)]
-// struct AnimationInfo {
-//     number_of_frames: u16,
-// }
-
-// #[derive(Debug)]
-// enum AssetPath {
-//     Static(StaticAsset),
-//     Animated(AnimatedAsset),
-// }
-
-// #[derive(Debug)]
-// struct StaticAsset {
-//     name: String,
-//     width: u16,
-//     height: u16,
-// }
-
-// #[derive(Debug)]
-// struct AnimatedAsset {
-//     name: String,
-//     width: u16,
-//     height: u16,
-//     number_of_frames: u16,
-// }
-
-// TODO add a target color depth (e.g. rgb565)
-
-const FPS: u16 = 20;
 
 fn main() {
     env_logger::init();
-    let Args { assets_source_dir } = process_args(std::env::args().collect());
+    let Args { assets_input_dir } = process_args(std::env::args().collect());
 
-    let assets_source_dir = Path::new(&assets_source_dir);
+    let assets_input_dir = Path::new(&assets_input_dir);
 
-    let mut assets_output_dir = assets_source_dir.parent().unwrap().to_path_buf();
+    let mut assets_output_dir = assets_input_dir.parent().unwrap().to_path_buf();
     assets_output_dir.push("output");
     let assets_output_dir = Path::new(&assets_output_dir);
 
     prepare_output_directory(assets_output_dir);
 
-    // let assets_source_dir = process_args(args);
-
-    // for asset in assets_source_dir {
-
-    // }
-
-    // let asset_info = get_asset_info(asset_path);
+    process_assets(assets_input_dir, assets_output_dir);
 }
 
 fn process_args(args: Vec<String>) -> Args {
@@ -100,80 +46,103 @@ fn process_args(args: Vec<String>) -> Args {
         error!("Path to graphics input must be provided. e.g. cargo run -- ../path/to/graphics");
         exit(1);
     } else if args.len() >= 3 {
-        error!("Unexpected argument provided");
+        error!("Too many arguments provided");
         exit(1);
     } else {
         Args {
-            assets_source_dir: args[1].clone(),
+            assets_input_dir: args[1].clone(),
         }
-        // match fs::read_dir(args[1].clone()) {
-        //     Ok(_) => Args {
-        //         assets_source_dir: args[1].clone(),
-        //     },
-        //     Err(_) => {
-        //         error!("Unable to read provided path: {:?}", args[1]);
-        //         exit(1);
-        //     }
-        // }
     }
 }
 
 fn prepare_output_directory(output_dir: &Path) {
     if fs::exists(output_dir).unwrap() {
-        // Delete the existing directory
+        // Delete the existing directory including its contents
         fs::remove_dir_all(output_dir).unwrap()
     }
-
     fs::create_dir(output_dir).unwrap()
-
-    // let exists: bool = match fs::exists(output_dir) {
-    //     Ok(exists) => exists,
-    //     Err(e) => ,
-    // };
-    // if fs::exists(output_dir) {
-
-    // }
 }
 
-// TODO rename
-// fn get_asset_info(asset_path: String) -> Vec<AssetInfo> {
-//     let mut asset_info: Vec<AssetInfo> = Vec::new();
+fn process_assets(input_path: &Path, output_dir: &Path) {
+    for asset in fs::read_dir(input_path).unwrap() {
+        let asset = asset.unwrap();
+        let file_type = asset.file_type().unwrap();
+        if file_type.is_file() {
+            process_static_asset(Path::new(&asset.path()), output_dir);
+        } else if file_type.is_dir() {
+            process_animated_asset(Path::new(&asset.path()));
+        } else {
+            panic!()
+        }
+    }
+}
 
-//     let root_dir = match fs::read_dir("../input") {
-//         Ok(read_dir) => read_dir,
-//         Err(_) => {
-//             error!("Unable to read directory {:?}", asset_path);
-//             exit(1);
-//         }
-//     };
+fn process_static_asset(static_asset_path: &Path, output_dir: &Path) {
+    // Load the image
+    let image = ImageReader::open(static_asset_path)
+        .unwrap()
+        .decode()
+        .unwrap();
+    let width = image.width();
+    let height = image.height();
+    // Convert the image to rgb565
+    let mut pixels565: Vec<u16> = Vec::new();
+    for pixel in image.to_rgb8().pixels() {
+        pixels565.push(rgb888torgb565(pixel[0], pixel[1], pixel[2]));
+    }
+    assert_eq!(pixels565.len(), (width * height) as usize);
+    // Compress
+    let compressed_data = miniz_oxide::deflate::compress_to_vec(pixels565.as_bytes(), 5);
 
-//     for entry in root_dir {
-//         let entry = entry.unwrap_or_else(|e| {
-//             error!("Failed to read DirEntry: {:?}", e);
-//             exit(1);
-//         });
+    let output_filename = static_asset_path.with_extension("bin");
+    let output_filename = output_filename.file_name().unwrap();
+    let mut output_path = output_dir.to_path_buf();
+    output_path.push(output_filename);
+    fs::write(output_path, compressed_data.as_bytes()).unwrap();
+}
 
-//         let file_type = entry.file_type().unwrap_or_else(|e| {
-//             error!("Failed to determine file type of {:?}: {:?}", entry, e);
-//             exit(1);
-//         });
+fn process_animated_asset(_animated_asset_path: &Path) {}
 
-//         if file_type.is_dir() {
-//             asset_info.push(get_animation_info(entry));
-//         } else if file_type.is_file() {
-//         } else {
-//             error!("Unrecognised file type {:?}", file_type);
-//             exit(1)
-//         }
-//     }
+pub fn rgb888torgb565(r8: u8, g8: u8, b8: u8) -> u16 {
+    let r5 = (r8 >> 3) & 0b00011111;
+    let g6 = (g8 >> 2) & 0b00111111;
+    let b5 = (b8 >> 3) & 0b00011111;
 
-//     Ok(asset_list)
-// }
+    ((r5 as u16) << 11) | ((g6 as u16) << 5) | (b5 as u16)
+}
 
-// fn get_animation_info(dir: DirEntry) -> AssetInfo {
-//     todo!()
-// }
+#[cfg(test)]
+mod tests {
+    use image::EncodableLayout;
 
-// fn get_static_asset_info(dir: DirEntry) -> AssetInfo {
+    #[test]
+    fn check_decompression() {
+        use image::ImageReader;
+        let expected_vec = {
+            let image = ImageReader::open("./input/espressif.png")
+                .unwrap()
+                .decode()
+                .unwrap();
+            let mut pixels565: Vec<u16> = Vec::new();
+            for pixel in image.to_rgb8().pixels() {
+                pixels565.push(super::rgb888torgb565(pixel[0], pixel[1], pixel[2]));
+            }
+            pixels565
+        };
+        let expected_bytes = expected_vec.as_bytes();
 
-// }
+        let compressed_bytes = include_bytes!("../output/espressif.bin").as_bytes();
+        let mut output_bytes = [0_u8; 128 * 128 * 2];
+        let _bytes_wrote = miniz_oxide::inflate::decompress_slice_iter_to_slice(
+            &mut output_bytes,
+            core::iter::once(compressed_bytes),
+            false,
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(expected_bytes.len(), 128 * 128 * 2);
+
+        assert_eq!(output_bytes, expected_bytes);
+    }
+}

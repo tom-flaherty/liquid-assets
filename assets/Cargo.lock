@@ -412,6 +412,7 @@ dependencies = [
  "image",
  "log",
  "miniz_oxide 0.9.1",
+ "num-traits",
 ]
 
 [[package]]
