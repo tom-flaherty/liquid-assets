@@ -41,12 +41,12 @@ fn main() -> ! {
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320);
 
-
+    run();
 
     loop {
         rprintln!("End!");
         let delay_start = Instant::now();
-        while delay_start.elapsed() < Duration::from_millis(5000) {}
+        while delay_start.elapsed() < Duration::from_secs(60) {}
     }
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.1.0/examples
