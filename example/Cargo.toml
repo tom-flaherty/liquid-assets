@@ -1,25 +1,24 @@
 [package]
-edition      = "2024"
-name         = "example"
+edition = "2024"
+name = "example"
 rust-version = "1.88"
-version      = "0.1.0"
+version = "0.1.0"
 
 [[bin]]
-name = "emb-comp1"
+name = "example"
 path = "./src/bin/main.rs"
 
 [dependencies]
 esp-hal = { version = "~1.1.0", features = ["esp32c3", "unstable"] }
 
-
 esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c3"] }
 
 critical-section = "1.2.0"
-esp-alloc        = "0.10.0"
-rtt-target       = "0.6.2"
+esp-alloc = "0.10.0"
+rtt-target = "0.6.2"
 miniz_oxide = { version = "0.9.1" }
-# heapless = { version = "0.9.3", default-features = false }
 
+asset-decompression = { path = "../asset-decompression" }
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.dev]
@@ -28,7 +27,9 @@ miniz_oxide = { version = "0.9.1" }
 opt-level = "s"
 
 [profile.release]
-codegen-units = 1     # LLVM can perform better optimizations using a single thread
-debug         = 2     # prefer slower builds but better debugging experience
-lto           = 'fat'
-opt-level     = 's'
+codegen-units = 1 # LLVM can perform better optimizations using a single thread
+debug = 2         # prefer slower builds but better debugging experience
+lto = 'fat'
+opt-level = 's'
+
+[workspace]

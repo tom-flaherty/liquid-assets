@@ -11,7 +11,7 @@ use esp_hal::clock::CpuClock;
 use esp_hal::main;
 use esp_hal::time::{Duration, Instant};
 use rtt_target::rprintln;
-use emb_comp1::run;
+use example::run;
 
 #[panic_handler]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
