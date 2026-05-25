@@ -20,3 +20,5 @@ rebuild assets when the input folder changes
 
 - There are tonnes of unwraps which may not produce intuivive outputs
 - The compression code needs to be split into submodules and subfunctions
+
+- Add MIPIDSI library to the c3 example
