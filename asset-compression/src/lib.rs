@@ -19,13 +19,14 @@ use std::path::Path;
 /// └── asset_name3.png
 ///
 /// Non-png files can be included, e.g. notes or a source gif. These will be ignored.
-// mod args;
+///
 mod dir;
 mod processing;
 
-// use args::{Args, process_args};
 use dir::prepare_output_directory;
-use processing::process_assets;
+
+use crate::processing::AssetProcessor;
+pub use crate::processing::TargetColorFormat;
 
 #[derive(Debug)]
 pub enum CompError {
@@ -35,7 +36,11 @@ pub enum CompError {
 
 // TODO it should find all the assets first so that it can print progress, e.g. 22/300
 
-pub fn rebuild_graphics_if_changed(input_dir: &'static str, output_dir: &'static str) -> Result<(), CompError> {
+pub fn rebuild_graphics_if_changed(
+    input_dir: &'static str,
+    output_dir: &'static str,
+    target_color_format: TargetColorFormat,
+) -> Result<(), CompError> {
     let cargo_manifest_str = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
     let input_dir_str = format!("{}/{}", cargo_manifest_str, input_dir);
@@ -68,17 +73,11 @@ pub fn rebuild_graphics_if_changed(input_dir: &'static str, output_dir: &'static
     // Ensure output directory is empty
     prepare_output_directory(output_dir);
 
-    process_assets(input_dir, output_dir);
+    let mut asset_processor = AssetProcessor::new(target_color_format);
+    asset_processor.process(input_dir, output_dir);
+    asset_processor.print_stats();
 
     Ok(())
-}
-
-pub(crate) fn rgb888torgb565(r8: u8, g8: u8, b8: u8) -> u16 {
-    let r5 = (r8 >> 3) & 0b00011111;
-    let g6 = (g8 >> 2) & 0b00111111;
-    let b5 = (b8 >> 3) & 0b00011111;
-
-    ((r5 as u16) << 11) | ((g6 as u16) << 5) | (b5 as u16)
 }
 
 // #[cfg(test)]

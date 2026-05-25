@@ -1,8 +1,13 @@
-use asset_compression::rebuild_graphics_if_changed;
+use asset_compression::{TargetColorFormat, rebuild_graphics_if_changed};
 
 fn main() {
     // todo: Does the position of this function within main affect output?
-    rebuild_graphics_if_changed("./graphics-src", "./graphics-bin").unwrap();
+    rebuild_graphics_if_changed(
+        "./graphics-src",
+        "./graphics-bin",
+        TargetColorFormat::Rgb565,
+    )
+    .unwrap();
 
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
