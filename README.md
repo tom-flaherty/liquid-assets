@@ -17,3 +17,6 @@ rebuild assets when the input folder changes
 - Should the crate which provides compression also provide the decompression method?
 - How to support other display sizes, other RGB standards, transparency, etc
 - Support non-png input files
+
+- There are tonnes of unwraps which may not produce intuivive outputs
+- The compression code needs to be split into submodules and subfunctions
