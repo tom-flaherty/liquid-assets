@@ -5,7 +5,7 @@ use esp_hal::time::Instant;
 use miniz_oxide::inflate::decompress_slice_iter_to_slice;
 use rtt_target::rprintln;
 
-asset_decompression::include_graphics!("graphics");
+asset_decompression::include_graphics!("graphics-bin");
 
 pub fn run() {
     let mut frame_buffer = [0_u8; 128 * 128 * 2];
