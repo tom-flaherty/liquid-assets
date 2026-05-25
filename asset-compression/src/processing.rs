@@ -3,7 +3,8 @@ use std::{fs, path::Path};
 use strum_macros::EnumString;
 
 /// These are the image formats supported by the image crate
-#[derive(EnumString, Debug, PartialEq)]
+#[derive(EnumString, Debug, PartialEq, Clone, Copy)]
+#[strum(serialize_all = "snake_case")]
 pub enum ImageFormat {
     Avif,
     Bmp,
@@ -128,14 +129,20 @@ impl AssetProcessor {
 
     fn process_animated_asset(&mut self, animated_asset_path: &Path) {
         // Variable to ensure all images are the same type
-        let mut animation_frame_format: Option<ImageFormat> = None;
+        let mut animation_frame_file_format: Option<ImageFormat> = None;
+        let mut frame_numbers: Vec<u32> = Vec::new();
 
+        // Note that read_dir doesn't read files in any particular order (i.e. won't be alphabetical)
         for entry in fs::read_dir(animated_asset_path).unwrap() {
             let entry = entry.unwrap();
 
             let file_name = entry.file_name().to_str().unwrap().to_lowercase();
+            let file_format = match entry.path().extension() {
+                Some(file_format_os_str) => file_format_os_str.to_str().unwrap().to_string(),
+                None => String::new(),
+            };
 
-            let entry_image_format = match file_name.parse::<ImageFormat>() {
+            let entry_image_format = match file_format.parse::<ImageFormat>() {
                 Ok(image_format) => image_format,
                 Err(_e) => {
                     println!(
@@ -146,7 +153,7 @@ impl AssetProcessor {
                 }
             };
 
-            match animation_frame_format {
+            match animation_frame_file_format {
                 Some(format) => {
                     if format != entry_image_format {
                         panic!(
@@ -155,8 +162,38 @@ impl AssetProcessor {
                         )
                     }
                 }
-                None => animation_frame_format = Some(entry_image_format),
+                None => animation_frame_file_format = Some(entry_image_format),
             }
+
+            let entry_file_name_no_ext = entry.path().with_extension("");
+            let entry_file_name_no_ext = entry_file_name_no_ext
+                .file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+
+            // println!("Basename is {:?}", entry_file_name_no_ext);
+            let frame_number = {
+                // Trim the numeric ending of the file name
+                let trimmed_string = entry_file_name_no_ext.trim_end_matches(char::is_numeric);
+                if trimmed_string.is_empty() {
+                    panic!(
+                        "Invalid animation frame name (expected non-numeric beginning) {:?}",
+                        file_name
+                    );
+                }
+                // Use this to get the numeric part
+                let numeric_suffix = &entry_file_name_no_ext[trimmed_string.len()..];
+                match numeric_suffix.parse::<u32>() {
+                    Ok(frame_number) => frame_number,
+                    Err(_e) => panic!(
+                        "Invalid animation frame name (expected positive numeric ending) {:?}",
+                        file_name
+                    ),
+                }
+            };
+            frame_numbers.push(frame_number);
 
             // TODO extract the numbers from the end
             // TODO put the frame numbers in a list
@@ -165,9 +202,25 @@ impl AssetProcessor {
 
             // TODO write the iterator code in the proc macro crate
             // TODO write the compressor and decompressor traits so users provide their own
-
-            todo!();
+            // TODO snake case check?
         }
+        frame_numbers.sort();
+        for (index, frame_number) in frame_numbers.iter().enumerate() {
+            if *frame_number != (index as u32) + 1 {
+                panic!(
+                    "Missing frame {} in animation, path: {}. Found these frame numbers {:?}",
+                    (index as u32) + 1,
+                    animated_asset_path.to_str().unwrap(),
+                    frame_numbers
+                );
+            }
+        }
+        // let mut expected_frame_number: u32 = 1;
+        // for frame_number in frame_numbers {
+
+        //     expected_frame_number
+        // }
+        // println!("frame_numbers: {:?}", frame_numbers);
     }
 }
 
