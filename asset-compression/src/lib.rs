@@ -32,6 +32,7 @@ pub use crate::processing::TargetColorFormat;
 pub enum CompError {
     CannotVerifyInputDirExists,
     CannotVerifyOutputDirExists,
+    UnrecognisedFileType,
 }
 
 // TODO it should find all the assets first so that it can print progress, e.g. 22/300

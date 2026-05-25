@@ -1,6 +1,26 @@
-use std::{fs, path::Path};
-
 use image::{EncodableLayout as _, ImageReader};
+use std::{fs, path::Path};
+use strum_macros::EnumString;
+
+/// These are the image formats supported by the image crate
+#[derive(EnumString, Debug, PartialEq)]
+pub enum ImageFormat {
+    Avif,
+    Bmp,
+    Dds,
+    Exr,
+    Ff,
+    Gif,
+    Hdr,
+    Ico,
+    Jpeg,
+    Png,
+    Pnm,
+    Goi,
+    Tga,
+    Tiff,
+    Webp,
+}
 
 pub enum TargetColorFormat {
     Rgb565,
@@ -81,7 +101,10 @@ impl AssetProcessor {
                 // Convert image to rgb565
                 let mut bytes_pushed = 0;
                 for pixel in image.to_rgb8().pixels() {
-                    for byte in rgb888_to_rgb565(pixel[0], pixel[1], pixel[2]).to_be_bytes().into_iter() {
+                    for byte in rgb888_to_rgb565(pixel[0], pixel[1], pixel[2])
+                        .to_be_bytes()
+                        .into_iter()
+                    {
                         uncompressed_data.push(byte);
                         bytes_pushed += 1;
                     }
@@ -91,7 +114,8 @@ impl AssetProcessor {
         };
 
         // Compress
-        let compressed_data = miniz_oxide::deflate::compress_to_vec(uncompressed_data.as_bytes(), 10);
+        let compressed_data =
+            miniz_oxide::deflate::compress_to_vec(uncompressed_data.as_bytes(), 10);
 
         self.total_compressed_bytes += compressed_data.len() as u32;
 
@@ -102,8 +126,48 @@ impl AssetProcessor {
         fs::write(output_path, compressed_data.as_bytes()).unwrap();
     }
 
-    fn process_animated_asset(&mut self, _animated_asset_path: &Path) {
+    fn process_animated_asset(&mut self, animated_asset_path: &Path) {
+        // Variable to ensure all images are the same type
+        let mut animation_frame_format: Option<ImageFormat> = None;
 
+        for entry in fs::read_dir(animated_asset_path).unwrap() {
+            let entry = entry.unwrap();
+
+            let file_name = entry.file_name().to_str().unwrap().to_lowercase();
+
+            let entry_image_format = match file_name.parse::<ImageFormat>() {
+                Ok(image_format) => image_format,
+                Err(_e) => {
+                    println!(
+                        "Skipping file `{}` as it's not a valid image file",
+                        file_name
+                    );
+                    continue;
+                }
+            };
+
+            match animation_frame_format {
+                Some(format) => {
+                    if format != entry_image_format {
+                        panic!(
+                            "Animation contains more than one image type {}",
+                            animated_asset_path.to_str().unwrap()
+                        )
+                    }
+                }
+                None => animation_frame_format = Some(entry_image_format),
+            }
+
+            // TODO extract the numbers from the end
+            // TODO put the frame numbers in a list
+            // TODO after processed all entries, sort the number list and ensure it has no 0, no negative, and no gaps
+            // TODO compress the frame
+
+            // TODO write the iterator code in the proc macro crate
+            // TODO write the compressor and decompressor traits so users provide their own
+
+            todo!();
+        }
     }
 }
 
