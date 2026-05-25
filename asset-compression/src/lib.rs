@@ -61,7 +61,10 @@ pub fn rebuild_graphics_if_changed(
     let output_dir_str = format!("{}/{}", cargo_manifest_str, output_dir);
     let output_dir = Path::new(&output_dir_str);
 
-    println!("input directory full path is {}", input_dir_str);
+    println!("output directory full path is {}", output_dir_str);
+
+    // Ensure output directory is empty
+    prepare_output_directory(output_dir);
 
     if !output_dir
         .try_exists()
@@ -69,9 +72,6 @@ pub fn rebuild_graphics_if_changed(
     {
         return Err(CompError::CannotVerifyOutputDirExists);
     }
-
-    // Ensure output directory is empty
-    prepare_output_directory(output_dir);
 
     let mut asset_processor = AssetProcessor::new(target_color_format);
     asset_processor.process(input_dir, output_dir);

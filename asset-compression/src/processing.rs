@@ -55,7 +55,7 @@ impl AssetProcessor {
         println!("    {} uncompressed bytes", self.total_uncompressed_bytes);
         println!("    {} compressed bytes", self.total_compressed_bytes);
         println!(
-            "    {} compression ratio",
+            "    {} avg. compression ratio",
             (self.total_uncompressed_bytes as f32) / (self.total_compressed_bytes as f32)
         );
     }
@@ -93,6 +93,8 @@ impl AssetProcessor {
         // Compress
         let compressed_data = miniz_oxide::deflate::compress_to_vec(uncompressed_data.as_bytes(), 10);
 
+        self.total_compressed_bytes += compressed_data.len() as u32;
+
         let output_filename = static_asset_path.with_extension("bin");
         let output_filename = output_filename.file_name().unwrap();
         let mut output_path = output_dir.to_path_buf();
@@ -100,7 +102,9 @@ impl AssetProcessor {
         fs::write(output_path, compressed_data.as_bytes()).unwrap();
     }
 
-    fn process_animated_asset(&mut self, _animated_asset_path: &Path) {}
+    fn process_animated_asset(&mut self, _animated_asset_path: &Path) {
+
+    }
 }
 
 fn rgb888_to_rgb565(r8: u8, g8: u8, b8: u8) -> u16 {
