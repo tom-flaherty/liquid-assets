@@ -205,6 +205,9 @@ impl AssetProcessor {
             // TODO snake case check?
         }
         frame_numbers.sort();
+        if frame_numbers[0] == 0 {
+            panic!("Frames should be numbered starting with 1, not 0");
+        }
         for (index, frame_number) in frame_numbers.iter().enumerate() {
             if *frame_number != (index as u32) + 1 {
                 panic!(
@@ -215,12 +218,6 @@ impl AssetProcessor {
                 );
             }
         }
-        // let mut expected_frame_number: u32 = 1;
-        // for frame_number in frame_numbers {
-
-        //     expected_frame_number
-        // }
-        // println!("frame_numbers: {:?}", frame_numbers);
     }
 }
 
