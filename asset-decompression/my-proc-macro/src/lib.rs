@@ -177,7 +177,7 @@ fn process_animated_asset(
         .to_string();
     let animation_name_token_stream: proc_macro2::TokenStream = animation_name_str.parse().unwrap();
     let mut include_bytes_quotes: Vec<proc_macro2::TokenStream> = Vec::new();
-    for frame_number in 1..frame_count {
+    for frame_number in 1..(frame_count + 1) {
         let mut frame_path = asset.path().clone();
         frame_path.push(format!("FRAME{}.bin", frame_number));
         let frame_path_token_stream: proc_macro2::TokenStream =
