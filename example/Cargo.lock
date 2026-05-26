@@ -75,7 +75,6 @@ name = "asset-compression"
 version = "0.1.0"
 dependencies = [
  "image",
- "miniz_oxide 0.9.1",
  "strum 0.28.0",
  "strum_macros 0.28.0",
 ]

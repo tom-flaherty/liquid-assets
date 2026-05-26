@@ -16,12 +16,13 @@ esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c3"] }
 critical-section = "1.2.0"
 esp-alloc = "0.10.0"
 rtt-target = "0.6.2"
-miniz_oxide = { version = "0.9.1" }
 
 asset-decompression = { path = "../asset-decompression" }
+miniz_oxide = "0.9.1"
 
 [build-dependencies]
 asset-compression = { path = "../asset-compression" }
+miniz_oxide = "0.9.1"
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.dev]
