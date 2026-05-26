@@ -1,6 +1,6 @@
 #![no_std]
 
-use esp_hal::time::Instant;
+use esp_hal::{delay::Delay, time::Instant, timer::Timer};
 // use miniz_oxide::deflate::compress_to_vec;
 use miniz_oxide::inflate::decompress_slice_iter_to_slice;
 use rtt_target::rprintln;
@@ -18,6 +18,7 @@ asset_decompression::include_graphics!("graphics-bin", BUFFER_SIZE);
 // asset_decompression::include_graphics!("graphics-bin", 32768);
 
 pub fn run() {
+    // let delay = Delay::new();
     let mut frame_buffer = [0_u8; BUFFER_SIZE];
 
     // let compressed_bytes = include_bytes!("../../assets/output/espressif.bin").as_slice();
@@ -32,9 +33,12 @@ pub fn run() {
     )
     .unwrap();
 
+    // TODO the iterator is broken
+
     // let frame = assets::loading.get_frame(0, &mut frame_buffer).unwrap();
     for frame in assets::loading.as_iter() {
-        rprintln!("{:?}", frame);
+        rprintln!("{:?}", frame[0]);
+        // delay.delay_millis(1000);
     }
 
     let duration = start_time.elapsed();
