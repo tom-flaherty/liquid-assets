@@ -1,4 +1,4 @@
-use image::{EncodableLayout as _, ImageReader};
+use image::{DynamicImage, EncodableLayout as _, ImageReader};
 use std::{fs, path::Path};
 use strum_macros::EnumString;
 
@@ -105,29 +105,8 @@ impl AssetProcessor {
             .unwrap()
             .decode()
             .unwrap();
-        let width = image.width();
-        let height = image.height();
 
-        let mut uncompressed_data: Vec<u8> = Vec::new();
-        match self.target_color_format {
-            TargetColorFormat::Rgb565 => {
-                // For stats add uncompressed image size
-                self.total_uncompressed_bytes += width * height * 2;
-
-                // Convert image to rgb565
-                let mut bytes_pushed = 0;
-                for pixel in image.to_rgb8().pixels() {
-                    for byte in rgb888_to_rgb565(pixel[0], pixel[1], pixel[2])
-                        .to_be_bytes()
-                        .into_iter()
-                    {
-                        uncompressed_data.push(byte);
-                        bytes_pushed += 1;
-                    }
-                }
-                assert_eq!(bytes_pushed, (width * height * 2) as usize);
-            }
-        };
+        let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
 
         // Compress
         let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
@@ -220,29 +199,11 @@ impl AssetProcessor {
 
             // TODO compress the frame
             let image = ImageReader::open(entry.path()).unwrap().decode().unwrap();
-            let width = image.width();
-            let height = image.height();
 
-            let mut uncompressed_data: Vec<u8> = Vec::new();
-            match self.target_color_format {
-                TargetColorFormat::Rgb565 => {
-                    // For stats add uncompressed image size
-                    self.total_uncompressed_bytes += width * height * 2;
+            let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
 
-                    // Convert image to rgb565
-                    let mut bytes_pushed = 0;
-                    for pixel in image.to_rgb8().pixels() {
-                        for byte in rgb888_to_rgb565(pixel[0], pixel[1], pixel[2])
-                            .to_be_bytes()
-                            .into_iter()
-                        {
-                            uncompressed_data.push(byte);
-                            bytes_pushed += 1;
-                        }
-                    }
-                    assert_eq!(bytes_pushed, (width * height * 2) as usize);
-                }
-            };
+            // For stats add uncompressed image size
+            self.total_uncompressed_bytes += uncompressed_data.len() as u32;
 
             let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
 
@@ -280,6 +241,30 @@ fn rgb888_to_rgb565(r8: u8, g8: u8, b8: u8) -> u16 {
     let b5 = (b8 >> 3) & 0b00011111;
 
     ((r5 as u16) << 11) | ((g6 as u16) << 5) | (b5 as u16)
+}
+
+fn convert_image_to_bytes(
+    image: &DynamicImage,
+    target_color_format: &TargetColorFormat,
+) -> Vec<u8> {
+    let mut image_data: Vec<u8> = Vec::new();
+    match target_color_format {
+        TargetColorFormat::Rgb565 => {
+            // Convert image to rgb565
+            let mut bytes_pushed = 0;
+            for pixel in image.to_rgb8().pixels() {
+                for byte in rgb888_to_rgb565(pixel[0], pixel[1], pixel[2])
+                    .to_be_bytes()
+                    .into_iter()
+                {
+                    image_data.push(byte);
+                    bytes_pushed += 1;
+                }
+            }
+            assert_eq!(bytes_pushed, (image.width() * image.height() * 2) as usize);
+        }
+    };
+    image_data
 }
 
 // fn is_snake_case(str: &String) -> bool {
