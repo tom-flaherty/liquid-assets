@@ -5,10 +5,12 @@ use esp_hal::time::Instant;
 use miniz_oxide::inflate::decompress_slice_iter_to_slice;
 use rtt_target::rprintln;
 
+const BUFFER_SIZE: usize = 128 * 128 * 2;
+
 asset_decompression::include_graphics!("graphics-bin");
 
 pub fn run() {
-    let mut frame_buffer = [0_u8; 128 * 128 * 2];
+    let mut frame_buffer = [0_u8; BUFFER_SIZE];
 
     // let compressed_bytes = include_bytes!("../../assets/output/espressif.bin").as_slice();
 
