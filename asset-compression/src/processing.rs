@@ -32,6 +32,7 @@ pub struct AssetProcessor {
     // Some stats
     static_assets_found: u32,
     animated_assets_found: u32,
+    total_animation_frames: u32,
     total_uncompressed_bytes: u32,
     total_compressed_bytes: u32,
 }
@@ -44,6 +45,7 @@ impl AssetProcessor {
 
             static_assets_found: 0,
             animated_assets_found: 0,
+            total_animation_frames: 0,
             total_uncompressed_bytes: 0,
             total_compressed_bytes: 0,
         }
@@ -69,6 +71,7 @@ impl AssetProcessor {
         println!("Asset Processor:");
         println!("    {} static assets", self.static_assets_found);
         println!("    {} animated assets", self.animated_assets_found);
+        println!("    {} animation frames", self.total_animation_frames);
         println!(
             "    {} total assets",
             self.static_assets_found + self.animated_assets_found
@@ -128,6 +131,9 @@ impl AssetProcessor {
 
     fn process_animated_asset(&mut self, animated_asset_path: &Path, output_dir: &Path) {
         // TODO create the directory for the output frames to go
+        let mut animation_dir = output_dir.to_path_buf();
+        animation_dir.push(animated_asset_path.file_name().unwrap());
+        fs::create_dir(animation_dir.as_path()).unwrap();
 
         // Variable to ensure all images are the same type
         let mut animation_frame_file_format: Option<ImageFormat> = None;
@@ -221,6 +227,17 @@ impl AssetProcessor {
                 }
             };
 
+            let compressed_data =
+                miniz_oxide::deflate::compress_to_vec(uncompressed_data.as_bytes(), 10);
+
+            self.total_compressed_bytes += compressed_data.len() as u32;
+            self.total_animation_frames += 1;
+
+            // let output_filename = static_asset_path.with_extension("bin");
+            let mut output_path = animation_dir.clone();
+            output_path.push(format!("FRAME{}.bin", frame_number));
+            fs::write(output_path, compressed_data.as_bytes()).unwrap();
+
             // TODO write the iterator code in the proc macro crate
             // TODO write the compressor and decompressor traits so users provide their own
             // TODO snake case check?
@@ -248,3 +265,15 @@ fn rgb888_to_rgb565(r8: u8, g8: u8, b8: u8) -> u16 {
 
     ((r5 as u16) << 11) | ((g6 as u16) << 5) | (b5 as u16)
 }
+
+// fn is_snake_case(str: &String) -> bool {
+//     if str.is_empty() {
+//         false
+//     } else {
+//         str.chars()
+//             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+//             && !str.starts_with(|c: char| c.is_ascii_digit())
+//             && !str.contains("__")
+//             && !str.ends_with('_')
+//     }
+// }

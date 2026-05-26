@@ -18,7 +18,12 @@ rebuild assets when the input folder changes
 - How to support other display sizes, other RGB standards, transparency, etc
 - Support non-png input files
 
+
 - There are tonnes of unwraps which may not produce intuivive outputs
 - The compression code needs to be split into submodules and subfunctions
 
+
 - Add MIPIDSI library to the c3 example
+
+
+- Add postcard serialization so you can embed image width and height into the compressed data?
