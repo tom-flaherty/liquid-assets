@@ -4,17 +4,26 @@ use std::{
     os::unix::process,
     path::{Path, PathBuf},
 };
-use syn::{Error, LitStr, parse::Parse};
+use syn::{Error, LitInt, LitStr, Token, parse::Parse};
 
 struct MacroArgs {
     relative_path: String,
+    buffer_size: usize,
+    decompressor: proc_macro2::TokenStream,
 }
 
 impl Parse for MacroArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let lit_str: LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let lit_int: LitInt = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let decompressor: proc_macro2::TokenStream = input.parse()?;
+
         Ok(MacroArgs {
             relative_path: lit_str.value(),
+            buffer_size: lit_int.base10_parse()?,
+            decompressor,
         })
     }
 }
@@ -53,7 +62,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         let item = item.unwrap();
         let file_type = item.file_type().unwrap();
         if file_type.is_dir() {
-            struct_quotes.push(process_animated_asset(item));
+            struct_quotes.push(process_animated_asset(item, input.buffer_size));
         } else if file_type.is_file() {
             struct_quotes.push(process_static_asset(item));
         }
@@ -146,7 +155,7 @@ fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
     }
 }
 
-fn process_animated_asset(asset: DirEntry) -> proc_macro2::TokenStream {
+fn process_animated_asset(asset: DirEntry, buffer_size: usize) -> proc_macro2::TokenStream {
     let frame_count = fs::read_dir(asset.path()).unwrap().count();
     let animation_name_str: String = asset
         .path()
@@ -160,13 +169,17 @@ fn process_animated_asset(asset: DirEntry) -> proc_macro2::TokenStream {
     for frame_number in 1..frame_count {
         let mut frame_path = asset.path().clone();
         frame_path.push(format!("FRAME{}.bin", frame_number));
-        let frame_path_token_stream: proc_macro2::TokenStream = format!("\"{}\"", frame_path.to_str().unwrap()).parse().unwrap();
+        let frame_path_token_stream: proc_macro2::TokenStream =
+            format!("\"{}\"", frame_path.to_str().unwrap())
+                .parse()
+                .unwrap();
         include_bytes_quotes.push(quote! {
             include_bytes!(#frame_path_token_stream).as_slice(),
         });
     }
     quote! {
-        pub const #animation_name_token_stream: AnimatedAsset<#buffer_size> = AnimatedAsset {
+        // pub const #animation_name_token_stream: AnimatedAsset<#buffer_size> = AnimatedAsset {
+        pub const #animation_name_token_stream: AnimatedAsset = AnimatedAsset {
             frames: &[
                 #(#include_bytes_quotes)*
             ],

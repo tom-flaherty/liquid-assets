@@ -7,7 +7,11 @@ use rtt_target::rprintln;
 
 const BUFFER_SIZE: usize = 128 * 128 * 2;
 
-asset_decompression::include_graphics!("graphics-bin");
+struct Decompressor {}
+
+const DEC: Decompressor = Decompressor {};
+
+asset_decompression::include_graphics!("graphics-bin", BUFFER_SIZE, DEC);
 
 pub fn run() {
     let mut frame_buffer = [0_u8; BUFFER_SIZE];
