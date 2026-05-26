@@ -69,7 +69,6 @@ name = "asset-compression"
 version = "0.1.0"
 dependencies = [
  "image",
- "miniz_oxide 0.9.1",
  "strum",
  "strum_macros",
 ]
@@ -79,6 +78,7 @@ name = "asset-compression-test"
 version = "0.1.0"
 dependencies = [
  "asset-compression",
+ "miniz_oxide 0.9.1",
 ]
 
 [[package]]

@@ -1,4 +1,5 @@
 use std::path::Path;
+mod compressor;
 /// Expected structure for input directory:
 ///
 /// input
@@ -23,6 +24,8 @@ use std::path::Path;
 mod dir;
 mod processing;
 
+pub use compressor::Compressor;
+
 use dir::prepare_output_directory;
 
 use crate::processing::AssetProcessor;
@@ -37,10 +40,11 @@ pub enum CompError {
 
 // TODO it should find all the assets first so that it can print progress, e.g. 22/300
 
-pub fn rebuild_graphics_if_changed(
+pub fn rebuild_graphics_if_changed<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
     target_color_format: TargetColorFormat,
+    compressor: C,
 ) -> Result<(), CompError> {
     let cargo_manifest_str = std::env::var("CARGO_MANIFEST_DIR").unwrap();
 
@@ -75,7 +79,7 @@ pub fn rebuild_graphics_if_changed(
     }
 
     let mut asset_processor = AssetProcessor::new(target_color_format);
-    asset_processor.process(input_dir, output_dir);
+    asset_processor.process(input_dir, output_dir, &compressor);
     asset_processor.print_stats();
 
     Ok(())

@@ -51,18 +51,26 @@ impl AssetProcessor {
         }
     }
 
-    pub fn process(&mut self, input_path: &Path, output_dir: &Path) {
+    pub fn process<C: crate::Compressor>(
+        &mut self,
+        input_path: &Path,
+        output_dir: &Path,
+        compressor: &C,
+    ) {
         for asset in fs::read_dir(input_path).unwrap() {
             let asset = asset.unwrap();
             let file_type = asset.file_type().unwrap();
             if file_type.is_file() {
-                self.process_static_asset(Path::new(&asset.path()), output_dir);
+                self.process_static_asset(Path::new(&asset.path()), output_dir, compressor);
                 self.static_assets_found += 1;
             } else if file_type.is_dir() {
-                self.process_animated_asset(Path::new(&asset.path()), output_dir);
+                self.process_animated_asset(Path::new(&asset.path()), output_dir, compressor);
                 self.animated_assets_found += 1;
             } else {
-                panic!()
+                println!(
+                    "Skipping {} as it is neither a directory nor a file",
+                    asset.path().to_str().unwrap()
+                );
             }
         }
     }
@@ -87,7 +95,12 @@ impl AssetProcessor {
 
 // Private functions
 impl AssetProcessor {
-    fn process_static_asset(&mut self, static_asset_path: &Path, output_dir: &Path) {
+    fn process_static_asset<C: crate::Compressor>(
+        &mut self,
+        static_asset_path: &Path,
+        output_dir: &Path,
+        compressor: &C,
+    ) {
         let image = ImageReader::open(static_asset_path)
             .unwrap()
             .decode()
@@ -117,8 +130,7 @@ impl AssetProcessor {
         };
 
         // Compress
-        let compressed_data =
-            miniz_oxide::deflate::compress_to_vec(uncompressed_data.as_bytes(), 10);
+        let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
 
         self.total_compressed_bytes += compressed_data.len() as u32;
 
@@ -129,7 +141,12 @@ impl AssetProcessor {
         fs::write(output_path, compressed_data.as_bytes()).unwrap();
     }
 
-    fn process_animated_asset(&mut self, animated_asset_path: &Path, output_dir: &Path) {
+    fn process_animated_asset<C: crate::Compressor>(
+        &mut self,
+        animated_asset_path: &Path,
+        output_dir: &Path,
+        compressor: &C,
+    ) {
         // TODO create the directory for the output frames to go
         let mut animation_dir = output_dir.to_path_buf();
         animation_dir.push(animated_asset_path.file_name().unwrap());
@@ -227,8 +244,7 @@ impl AssetProcessor {
                 }
             };
 
-            let compressed_data =
-                miniz_oxide::deflate::compress_to_vec(uncompressed_data.as_bytes(), 10);
+            let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
 
             self.total_compressed_bytes += compressed_data.len() as u32;
             self.total_animation_frames += 1;
