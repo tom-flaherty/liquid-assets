@@ -62,6 +62,7 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
 
     // Tell cargo to rerun the build script whenever this folder has changed
     println!("cargo:rerun-if-changed={}", input_dir.to_str().unwrap());
+    println!("cargo:rerun-if-env-changed=REBUILD_GRAPHICS");
 
     let output_dir_str = format!("{}/{}", cargo_manifest_str, output_dir);
     let output_dir = Path::new(&output_dir_str);
