@@ -11,7 +11,11 @@ struct Decompressor {}
 
 const DEC: Decompressor = Decompressor {};
 
-asset_decompression::include_graphics!("graphics-bin", BUFFER_SIZE, DEC);
+// TODO verify that the buffer size can be either a literal or expression
+// TODO verify that it still works if you use a full path (e.g. crate::BUFFER_SIZE)
+// TODO need to ensure this macro isn't called within a function
+asset_decompression::include_graphics!("graphics-bin", BUFFER_SIZE);
+// asset_decompression::include_graphics!("graphics-bin", 32768);
 
 pub fn run() {
     let mut frame_buffer = [0_u8; BUFFER_SIZE];
@@ -27,6 +31,11 @@ pub fn run() {
         false,
     )
     .unwrap();
+
+    // let frame = assets::loading.get_frame(0, &mut frame_buffer).unwrap();
+    for frame in assets::loading.as_iter() {
+        rprintln!("{:?}", frame);
+    }
 
     let duration = start_time.elapsed();
 

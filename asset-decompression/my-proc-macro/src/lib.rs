@@ -4,26 +4,34 @@ use std::{
     os::unix::process,
     path::{Path, PathBuf},
 };
-use syn::{Error, LitInt, LitStr, Token, parse::Parse};
+use syn::{Error, Expr, LitInt, LitStr, Token, buffer, parse::Parse};
+
+enum BufferSizeParam {
+    Expr(Expr),
+    LitInt(usize),
+}
 
 struct MacroArgs {
     relative_path: String,
-    buffer_size: usize,
-    decompressor: proc_macro2::TokenStream,
+    buffer_size: BufferSizeParam,
+    // decompressor: proc_macro2::TokenStream,
 }
 
 impl Parse for MacroArgs {
     fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
         let lit_str: LitStr = input.parse()?;
         input.parse::<Token![,]>()?;
-        let lit_int: LitInt = input.parse()?;
-        input.parse::<Token![,]>()?;
-        let decompressor: proc_macro2::TokenStream = input.parse()?;
+        let buffer_size = match input.parse::<LitInt>() {
+            Ok(lit_int) => BufferSizeParam::LitInt(lit_int.base10_parse()?),
+            Err(_e) => BufferSizeParam::Expr(input.parse::<Expr>()?),
+        };
+        // input.parse::<Token![,]>()?;
+        // let decompressor: proc_macro2::TokenStream = input.parse()?;
 
         Ok(MacroArgs {
             relative_path: lit_str.value(),
-            buffer_size: lit_int.base10_parse()?,
-            decompressor,
+            buffer_size,
+            // decompressor,
         })
     }
 }
@@ -62,7 +70,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         let item = item.unwrap();
         let file_type = item.file_type().unwrap();
         if file_type.is_dir() {
-            struct_quotes.push(process_animated_asset(item, input.buffer_size));
+            struct_quotes.push(process_animated_asset(item, &input.buffer_size));
         } else if file_type.is_file() {
             struct_quotes.push(process_static_asset(item));
         }
@@ -80,7 +88,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
                 pub const fn get_number_of_frames(&self) -> usize {
                     self.frames.len()
                 }
-                pub fn get_frame(&self, frame_number: u32, buffer: &'static mut [u8; N]) -> Result<usize, ()> {
+                pub fn get_frame(&self, frame_number: u32, buffer: &mut [u8; N]) -> Result<usize, ()> {
                     if frame_number as usize >= self.frames.len() {
                         return Err(());
                     } else {
@@ -109,7 +117,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
                 type Item = &'static [u8];
 
                 fn next(&mut self) -> Option<Self::Item> {
-                    if self.current_frame <= self.frames.len() - 1 {
+                    if self.current_frame < self.frames.len() {
                         let return_val = Some(self.frames[self.current_frame]);
                         self.current_frame += 1;
                         return_val
@@ -155,7 +163,10 @@ fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
     }
 }
 
-fn process_animated_asset(asset: DirEntry, buffer_size: usize) -> proc_macro2::TokenStream {
+fn process_animated_asset(
+    asset: DirEntry,
+    buffer_size: &BufferSizeParam,
+) -> proc_macro2::TokenStream {
     let frame_count = fs::read_dir(asset.path()).unwrap().count();
     let animation_name_str: String = asset
         .path()
@@ -177,9 +188,14 @@ fn process_animated_asset(asset: DirEntry, buffer_size: usize) -> proc_macro2::T
             include_bytes!(#frame_path_token_stream).as_slice(),
         });
     }
+    let animated_asset_type = match buffer_size {
+        BufferSizeParam::Expr(expr) => quote! {AnimatedAsset<{ super::#expr }>},
+        BufferSizeParam::LitInt(lit_int) => quote! { AnimatedAsset<#lit_int> },
+    };
+
     quote! {
         // pub const #animation_name_token_stream: AnimatedAsset<#buffer_size> = AnimatedAsset {
-        pub const #animation_name_token_stream: AnimatedAsset = AnimatedAsset {
+        pub const #animation_name_token_stream: #animated_asset_type = AnimatedAsset {
             frames: &[
                 #(#include_bytes_quotes)*
             ],
