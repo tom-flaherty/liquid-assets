@@ -7,5 +7,5 @@ pub trait Decompressor {
         &self,
         buffer: &mut [u8; N],
         compressed_data: &[u8],
-    ) -> Result<(), ()>;
+    ) -> Result<usize, ()>;
 }

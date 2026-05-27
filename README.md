@@ -6,6 +6,10 @@ You can convert a gif to frames using:
 
 `ffmpeg -i mygif.gif frame_%04d.png`
 
+Or
+
+`ffmpeg -i mygif.gif -start_number 1 -vf scale=128:128 frame_%04d.png`
+
 # TODO
 
 - Generate the animation assets

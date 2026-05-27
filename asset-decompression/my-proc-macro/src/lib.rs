@@ -196,8 +196,8 @@ fn define_structs() -> proc_macro2::TokenStream {
             pub fn decompress<const N: usize>(
                 &self,
                 buffer: &mut [u8; N],
-                decompressor: &impl Decompressor
-            ) -> Result<(),()> {
+                decompressor: &impl Decompressor,
+            ) -> Result<usize, ()> {
                 decompressor.decompress(buffer, self.data)
             }
         }
@@ -209,13 +209,40 @@ fn define_structs() -> proc_macro2::TokenStream {
             pub const fn get_number_of_frames(&self) -> usize {
                 self.frames.len()
             }
-            pub fn get_frame(&self, frame_number: u32, buffer: &mut [u8; N]) -> Result<usize, ()> {
-                if frame_number as usize >= self.frames.len() {
-                    return Err(());
+            pub fn decompress_frame(
+                &self,
+                frame_number: usize,
+                buffer: &mut[u8; N],
+                decompressor: &impl Decompressor
+            ) -> Result<usize, ()> {
+                if frame_number < self.frames.len() {
+                    decompressor.decompress(buffer, self.frames[frame_number])
                 } else {
+                    Err(())
+                }
+            }
+            pub fn get_compressed_frame_data(
+                &self,
+                frame_number: usize,
+            ) -> Option<&'static [u8]> {
+                if frame_number < self.frames.len() {
+                    Some(self.frames[frame_number])
+                } else {
+                    None
+                }
+            }
+            #[doc = "This is a test docstring"]
+            pub fn copy_compressed_frame_data_to_buffer(
+                &self,
+                frame_number: usize,
+                buffer: &mut[u8; N],
+            ) -> Option<usize> {
+                if frame_number < self.frames.len() {
                     let source_bytes = self.frames[frame_number as usize];
                     buffer[..source_bytes.len()].copy_from_slice(source_bytes);
-                    Ok(source_bytes.len())
+                    Some(source_bytes.len())
+                } else {
+                    None
                 }
             }
             pub fn as_iter(&self) -> FrameIterator {
