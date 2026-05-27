@@ -5,4 +5,3 @@ edition = "2024"
 
 [dependencies]
 my-proc-macro = { path = "./my-proc-macro" }
-common = { path = "../common" }
