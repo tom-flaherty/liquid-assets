@@ -27,3 +27,5 @@ rebuild assets when the input folder changes
 
 
 - Add postcard serialization so you can embed image width and height into the compressed data?
+- You've got a mix of 'graphics' and 'assets'. Change everything to assets
+- Give the repo a witty name

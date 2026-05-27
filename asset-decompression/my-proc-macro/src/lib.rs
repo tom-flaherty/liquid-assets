@@ -1,9 +1,10 @@
+use proc_macro_error::{abort_call_site, proc_macro_error};
 use quote::quote;
 use std::{
     fs::{self, DirEntry},
     path::{Path, PathBuf},
 };
-use syn::{Error, Expr, LitInt, LitStr, Token, parse::Parse};
+use syn::{Expr, LitInt, LitStr, Token, parse::Parse};
 
 enum BufferSizeParam {
     Expr(Expr),
@@ -37,29 +38,32 @@ impl Parse for MacroArgs {
 }
 
 #[proc_macro]
+#[proc_macro_error]
 pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let MacroArgs {
         graphics_path,
         buffer_size,
     } = syn::parse_macro_input!(input as MacroArgs);
 
-    let mut target_dir: PathBuf = std::env::var("CARGO_MANIFEST_DIR").unwrap().into();
+    let mut target_dir: PathBuf = match std::env::var("CARGO_MANIFEST_DIR") {
+        Ok(path_str) => path_str,
+        Err(e) => abort_call_site!(
+            "Could not read environment variable CARGO_MANIFEST_DIR: {:?}",
+            e
+        ),
+    }
+    .into();
     target_dir.push(Path::new(&graphics_path));
 
-    let mut struct_quotes: Vec<proc_macro2::TokenStream> = Vec::new();
-    let read_dir = match fs::read_dir(&target_dir) {
+    let target_dir_read = match fs::read_dir(&target_dir) {
         Ok(read_dir) => read_dir,
         Err(e) => {
-            return Error::new(
-                proc_macro2::Span::call_site(),
-                format!("Failed to read directory {:?}: {:?}", target_dir, e),
-            )
-            .to_compile_error()
-            .into();
+            abort_call_site!("Failed to read directory {:?}: {:?}", target_dir, e)
         }
     };
 
-    for item in read_dir {
+    let mut struct_quotes: Vec<proc_macro2::TokenStream> = Vec::new();
+    for item in target_dir_read {
         let item = item.unwrap();
         let file_type = item.file_type().unwrap();
         if file_type.is_dir() {
@@ -81,31 +85,17 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
 }
 
 fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
-    let asset_name_str: String = asset
-        .path()
-        .file_stem()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string();
+    let asset_name = process_asset_name(&asset);
 
-    if !is_snake_case(&asset_name_str) {
-        return Error::new(
-            proc_macro2::Span::call_site(),
-            format!("Asset name is not valid snake_case: {:?}", asset_name_str),
-        )
-        .to_compile_error()
-        .into();
+    let path_to_bin: String = match asset.path().to_str() {
+        Some(path_as_str) => path_as_str,
+        None => abort_call_site!("Unable to convert path to string: {:?}", asset.path()),
     }
-
-    let asset_name_token_stream: proc_macro2::TokenStream =
-        asset_name_str.to_ascii_uppercase().parse().unwrap();
-
-    let binary_path: String = asset.path().to_str().unwrap().to_owned();
+    .to_owned();
 
     quote! {
-        pub const #asset_name_token_stream: StaticAsset = StaticAsset {
-            bytes: include_bytes!(#binary_path).as_slice(),
+        pub const #asset_name: StaticAsset = StaticAsset {
+            bytes: include_bytes!(#path_to_bin).as_slice(),
         };
     }
 }
@@ -114,40 +104,88 @@ fn process_animated_asset(
     asset: DirEntry,
     buffer_size: &BufferSizeParam,
 ) -> proc_macro2::TokenStream {
-    let frame_count = fs::read_dir(asset.path()).unwrap().count();
-    let animation_name_str: String = asset
-        .path()
-        .file_stem()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string()
-        .to_ascii_uppercase();
-    let animation_name_token_stream: proc_macro2::TokenStream = animation_name_str.parse().unwrap();
-    let mut include_bytes_quotes: Vec<proc_macro2::TokenStream> = Vec::new();
-    for frame_number in 1..(frame_count + 1) {
-        let mut frame_path = asset.path().clone();
-        frame_path.push(format!("FRAME{}.bin", frame_number));
-        let frame_path_token_stream: proc_macro2::TokenStream =
-            format!("\"{}\"", frame_path.to_str().unwrap())
-                .parse()
-                .unwrap();
-        include_bytes_quotes.push(quote! {
-            include_bytes!(#frame_path_token_stream).as_slice(),
+    let asset_name = process_asset_name(&asset);
+
+    let total_frames = match fs::read_dir(asset.path()) {
+        Ok(read_dir) => read_dir,
+        Err(e) => abort_call_site!(
+            "Could not read animated asset directory {:?}: {:?}",
+            asset.path(),
+            e
+        ),
+    }
+    .count();
+
+    // Data for each frame is added with include bytes
+    let mut frame_data: Vec<proc_macro2::TokenStream> = Vec::new();
+
+    for frame_number in 1..(total_frames + 1) {
+        let frame_dir = asset.path().clone();
+
+        let frame_bin_path = frame_dir.join(Path::new(&format!("FRAME{}.bin", frame_number)));
+
+        let frame_bin_path_str = match frame_bin_path.to_str() {
+            Some(frame_path_str) => frame_path_str,
+            None => abort_call_site!("Failed to convert frame path to str"),
+        };
+
+        // Surround the path with quote marks
+        let frame_bin_path_str = format!("\"{}\"", frame_bin_path_str);
+
+        let frame_path = match frame_bin_path_str.parse::<proc_macro2::TokenStream>() {
+            Ok(frame_path_token_stream) => frame_path_token_stream,
+            Err(e) => abort_call_site!(
+                "Failed to convert frame path str into token stream: {:?}",
+                e
+            ),
+        };
+
+        frame_data.push(quote! {
+            include_bytes!(#frame_path).as_slice(),
         });
     }
-    let animated_asset_generic = match buffer_size {
+
+    // The AnimatedAsset struct requires a size at compile time. The user may have entered
+    // a integer literal (which is used directly) or an expression which is accessed with super::
+    let lifetime = match buffer_size {
         BufferSizeParam::Expr(expr) => quote! {{ super::#expr }},
         BufferSizeParam::LitInt(lit_int) => quote! {#lit_int},
     };
 
     quote! {
-        pub const #animation_name_token_stream: AnimatedAsset<#animated_asset_generic> = AnimatedAsset {
+        pub const #asset_name: AnimatedAsset<#lifetime> = AnimatedAsset {
             frames: &[
-                #(#include_bytes_quotes)*
+                #(#frame_data)*
             ],
         };
     }
+}
+
+fn process_asset_name(asset_dir_entry: &DirEntry) -> proc_macro2::TokenStream {
+    let asset_path = asset_dir_entry.path();
+    let asset_file_stem = match asset_path.file_stem() {
+        Some(file_stem) => file_stem,
+        None => abort_call_site!(
+            "Unable to get file stem for asset {:?}",
+            asset_dir_entry.path()
+        ),
+    };
+    let asset_name = match asset_file_stem.to_str() {
+        Some(asset_name) => asset_name,
+        None => abort_call_site!(
+            "Unable to convert file stem into str {:?}",
+            asset_dir_entry.path()
+        ),
+    }
+    .to_string();
+
+    if !is_snake_case(&asset_name) {
+        abort_call_site!("Asset name is not valid snake_case: {:?}", asset_name);
+    }
+
+    let asset_name = asset_name.to_ascii_uppercase();
+
+    asset_name.parse().unwrap()
 }
 
 fn define_structs() -> proc_macro2::TokenStream {
@@ -155,8 +193,9 @@ fn define_structs() -> proc_macro2::TokenStream {
         pub struct StaticAsset {
             pub bytes: &'static [u8],
         }
+
         pub struct AnimatedAsset<const N: usize> {
-            frames: &'static [&'static [u8]]
+            frames: &'static [&'static [u8]],
         }
         impl<const N: usize> AnimatedAsset<N> {
             pub const fn get_number_of_frames(&self) -> usize {
@@ -175,6 +214,7 @@ fn define_structs() -> proc_macro2::TokenStream {
                 FrameIterator::new(self.frames)
             }
         }
+
         pub struct FrameIterator {
             frames: &'static [&'static [u8]],
             current_frame: usize,
