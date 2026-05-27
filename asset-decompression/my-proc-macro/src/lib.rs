@@ -68,7 +68,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         }
     }
 
-    let struct_definitions = define_structs();
+    let struct_definitions = define_module_types();
 
     quote! {
         pub mod assets {
@@ -184,7 +184,7 @@ fn process_asset_name(asset_dir_entry: &DirEntry) -> proc_macro2::TokenStream {
     asset_name.parse().unwrap()
 }
 
-fn define_structs() -> proc_macro2::TokenStream {
+fn define_module_types() -> proc_macro2::TokenStream {
     quote! {
         #[derive(Debug)]
         pub enum Error<DecompressionError> {
@@ -204,7 +204,8 @@ fn define_structs() -> proc_macro2::TokenStream {
                 buffer: &mut [u8; N],
                 decompressor: &D,
             ) -> Result<usize, Error<<D as Decompressor>::Error>> {
-                decompressor.decompress(buffer, self.data)
+                decompressor
+                    .decompress(buffer, self.data)
                     .map_err(|e| Error::Decompression(e))
             }
         }
@@ -219,11 +220,12 @@ fn define_structs() -> proc_macro2::TokenStream {
             pub fn decompress_frame<D: Decompressor>(
                 &self,
                 frame_number: usize,
-                buffer: &mut[u8; N],
-                decompressor: &D
+                buffer: &mut [u8; N],
+                decompressor: &D,
             ) -> Result<usize, Error<<D as Decompressor>::Error>> {
                 if frame_number < self.frames.len() {
-                    decompressor.decompress(buffer, self.frames[frame_number])
+                    decompressor
+                        .decompress(buffer, self.frames[frame_number])
                         .map_err(|e| Error::Decompression(e))
                 } else {
                     Err(Error::FrameOutOfRange)
@@ -243,7 +245,7 @@ fn define_structs() -> proc_macro2::TokenStream {
             pub fn copy_compressed_frame_data_to_buffer<D: Decompressor>(
                 &self,
                 frame_number: usize,
-                buffer: &mut[u8; N],
+                buffer: &mut [u8; N],
             ) -> Result<usize, Error<<D as Decompressor>::Error>> {
                 if frame_number < self.frames.len() {
                     let source_bytes = self.frames[frame_number as usize];
