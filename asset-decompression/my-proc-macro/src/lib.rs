@@ -229,10 +229,10 @@ fn define_structs() -> proc_macro2::TokenStream {
                     Err(Error::FrameOutOfRange)
                 }
             }
-            pub fn get_compressed_frame_data<D: Decompressor>(
+            pub fn get_compressed_frame_data(
                 &self,
                 frame_number: usize,
-            ) -> Result<&'static [u8], Error<<D as Decompressor>::Error>> {
+            ) -> Result<&'static [u8], Error<()>> {
                 if frame_number < self.frames.len() {
                     Ok(self.frames[frame_number])
                 } else {
