@@ -62,7 +62,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         let item = item.unwrap();
         let file_type = item.file_type().unwrap();
         if file_type.is_dir() {
-            struct_quotes.push(process_animated_asset(item, &buffer_size));
+            // struct_quotes.push(process_animated_asset(item, &buffer_size));
         } else if file_type.is_file() {
             struct_quotes.push(process_static_asset(item));
         }
@@ -186,6 +186,11 @@ fn process_asset_name(asset_dir_entry: &DirEntry) -> proc_macro2::TokenStream {
 
 fn define_structs() -> proc_macro2::TokenStream {
     quote! {
+        pub enum CustomError<E> {
+            DecompressionError(E),
+            OtherError,
+        }
+
         pub struct StaticAsset {
             data: &'static [u8],
         }
@@ -193,11 +198,11 @@ fn define_structs() -> proc_macro2::TokenStream {
             pub fn get_comressed_data(&self) -> &'static [u8] {
                 self.data
             }
-            pub fn decompress<const N: usize>(
+            pub fn decompress<const N: usize, D: Decompressor>(
                 &self,
                 buffer: &mut [u8; N],
-                decompressor: &impl Decompressor,
-            ) -> Result<usize, ()> {
+                decompressor: &D,
+            ) -> Result<usize, <D as Decompressor>::Error> {
                 decompressor.decompress(buffer, self.data)
             }
         }
@@ -209,72 +214,73 @@ fn define_structs() -> proc_macro2::TokenStream {
             pub const fn get_number_of_frames(&self) -> usize {
                 self.frames.len()
             }
-            pub fn decompress_frame(
+            pub fn decompress_frame<D: Decompressor>(
                 &self,
                 frame_number: usize,
                 buffer: &mut[u8; N],
-                decompressor: &impl Decompressor
-            ) -> Result<usize, ()> {
-                if frame_number < self.frames.len() {
-                    decompressor.decompress(buffer, self.frames[frame_number])
-                } else {
-                    Err(())
-                }
+                decompressor: &D
+            ) -> Result<usize, <D as Decompressor>::Error> {
+                // if frame_number < self.frames.len() {
+                //     decompressor.decompress(buffer, self.frames[frame_number])
+                // } else {
+                //     Err(())
+                // }
+                decompressor.decompress(buffer, self.frames[frame_number])
             }
-            pub fn get_compressed_frame_data(
-                &self,
-                frame_number: usize,
-            ) -> Option<&'static [u8]> {
-                if frame_number < self.frames.len() {
-                    Some(self.frames[frame_number])
-                } else {
-                    None
-                }
-            }
-            #[doc = "This is a test docstring"]
-            pub fn copy_compressed_frame_data_to_buffer(
-                &self,
-                frame_number: usize,
-                buffer: &mut[u8; N],
-            ) -> Option<usize> {
-                if frame_number < self.frames.len() {
-                    let source_bytes = self.frames[frame_number as usize];
-                    buffer[..source_bytes.len()].copy_from_slice(source_bytes);
-                    Some(source_bytes.len())
-                } else {
-                    None
-                }
-            }
-            pub fn as_iter(&self) -> FrameIterator {
-                FrameIterator::new(self.frames)
-            }
+        //     pub fn get_compressed_frame_data(
+        //         &self,
+        //         frame_number: usize,
+        //     ) -> Option<&'static [u8]> {
+        //         if frame_number < self.frames.len() {
+        //             Some(self.frames[frame_number])
+        //         } else {
+        //             None
+        //         }
+        //     }
+        //     #[doc = "This is a test docstring"]
+        //     pub fn copy_compressed_frame_data_to_buffer(
+        //         &self,
+        //         frame_number: usize,
+        //         buffer: &mut[u8; N],
+        //     ) -> Option<usize> {
+        //         if frame_number < self.frames.len() {
+        //             let source_bytes = self.frames[frame_number as usize];
+        //             buffer[..source_bytes.len()].copy_from_slice(source_bytes);
+        //             Some(source_bytes.len())
+        //         } else {
+        //             None
+        //         }
+        //     }
+        //     pub fn as_iter(&self) -> FrameIterator {
+        //         FrameIterator::new(self.frames)
+        //     }
         }
 
-        pub struct FrameIterator {
-            frames: &'static [&'static [u8]],
-            current_frame: usize,
-        }
-        impl FrameIterator {
-            pub fn new(frames: &'static [&'static [u8]]) -> Self {
-                Self {
-                    frames,
-                    current_frame: 0,
-                }
-            }
-        }
-        impl Iterator for FrameIterator {
-            type Item = &'static [u8];
+        // pub struct FrameIterator {
+        //     frames: &'static [&'static [u8]],
+        //     current_frame: usize,
+        // }
+        // impl FrameIterator {
+        //     pub fn new(frames: &'static [&'static [u8]]) -> Self {
+        //         Self {
+        //             frames,
+        //             current_frame: 0,
+        //         }
+        //     }
+        // }
+        // impl Iterator for FrameIterator {
+        //     type Item = &'static [u8];
 
-            fn next(&mut self) -> Option<Self::Item> {
-                if self.current_frame < self.frames.len() {
-                    let return_val = Some(self.frames[self.current_frame]);
-                    self.current_frame += 1;
-                    return_val
-                } else {
-                    None
-                }
-            }
-        }
+        //     fn next(&mut self) -> Option<Self::Item> {
+        //         if self.current_frame < self.frames.len() {
+        //             let return_val = Some(self.frames[self.current_frame]);
+        //             self.current_frame += 1;
+        //             return_val
+        //         } else {
+        //             None
+        //         }
+        //     }
+        // }
     }
 }
 
