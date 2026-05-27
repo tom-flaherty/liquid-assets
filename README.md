@@ -29,3 +29,6 @@ rebuild assets when the input folder changes
 - Add postcard serialization so you can embed image width and height into the compressed data?
 - You've got a mix of 'graphics' and 'assets'. Change everything to assets
 - Give the repo a witty name
+- We added REBUILD_GRAPHICS=1 to rebuild the graphics, but this also rebuilds when
+the variable changes back to 0. The build.rs file should check that REBUILD_GRAPHICS is
+set to 1 before rebuilding the assets.

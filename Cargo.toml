@@ -1,2 +1,2 @@
 [workspace]
-members = ["asset-compression", "asset-decompression"]
+members = ["asset-compression", "asset-decompression", "common"]

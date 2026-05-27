@@ -14,7 +14,6 @@ enum BufferSizeParam {
 struct MacroArgs {
     graphics_path: String,
     buffer_size: BufferSizeParam,
-    // decompressor: proc_macro2::TokenStream,
 }
 
 impl Parse for MacroArgs {
@@ -25,14 +24,10 @@ impl Parse for MacroArgs {
             Ok(lit_int) => BufferSizeParam::LitInt(lit_int.base10_parse()?),
             Err(_e) => BufferSizeParam::Expr(input.parse::<Expr>()?),
         };
-        // TODO adding the decompressor trait
-        // input.parse::<Token![,]>()?;
-        // let decompressor: proc_macro2::TokenStream = input.parse()?;
 
         Ok(MacroArgs {
             graphics_path: lit_str.value(),
             buffer_size,
-            // decompressor,
         })
     }
 }
@@ -77,6 +72,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
 
     quote! {
         pub mod assets {
+            use asset_decompression::Decompressor;
             #struct_definitions
             #(#struct_quotes)*
         }
@@ -147,13 +143,13 @@ fn process_animated_asset(
 
     // The AnimatedAsset struct requires a size at compile time. The user may have entered
     // a integer literal (which is used directly) or an expression which is accessed with super::
-    let lifetime = match buffer_size {
+    let buffer_size = match buffer_size {
         BufferSizeParam::Expr(expr) => quote! {{ super::#expr }},
         BufferSizeParam::LitInt(lit_int) => quote! {#lit_int},
     };
 
     quote! {
-        pub const #asset_name: AnimatedAsset<#lifetime> = AnimatedAsset {
+        pub const #asset_name: AnimatedAsset<#buffer_size> = AnimatedAsset {
             frames: &[
                 #(#frame_data)*
             ],
