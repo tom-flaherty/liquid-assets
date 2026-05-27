@@ -62,7 +62,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         let item = item.unwrap();
         let file_type = item.file_type().unwrap();
         if file_type.is_dir() {
-            // struct_quotes.push(process_animated_asset(item, &buffer_size));
+            struct_quotes.push(process_animated_asset(item, &buffer_size));
         } else if file_type.is_file() {
             struct_quotes.push(process_static_asset(item));
         }
@@ -186,9 +186,10 @@ fn process_asset_name(asset_dir_entry: &DirEntry) -> proc_macro2::TokenStream {
 
 fn define_structs() -> proc_macro2::TokenStream {
     quote! {
-        pub enum CustomError<E> {
-            DecompressionError(E),
-            OtherError,
+        #[derive(Debug)]
+        pub enum Error<DecompressionError> {
+            Decompression(DecompressionError),
+            FrameOutOfRange,
         }
 
         pub struct StaticAsset {
@@ -202,8 +203,9 @@ fn define_structs() -> proc_macro2::TokenStream {
                 &self,
                 buffer: &mut [u8; N],
                 decompressor: &D,
-            ) -> Result<usize, <D as Decompressor>::Error> {
+            ) -> Result<usize, Error<<D as Decompressor>::Error>> {
                 decompressor.decompress(buffer, self.data)
+                    .map_err(|e| Error::Decompression(e))
             }
         }
 
@@ -219,68 +221,68 @@ fn define_structs() -> proc_macro2::TokenStream {
                 frame_number: usize,
                 buffer: &mut[u8; N],
                 decompressor: &D
-            ) -> Result<usize, <D as Decompressor>::Error> {
-                // if frame_number < self.frames.len() {
-                //     decompressor.decompress(buffer, self.frames[frame_number])
-                // } else {
-                //     Err(())
-                // }
-                decompressor.decompress(buffer, self.frames[frame_number])
+            ) -> Result<usize, Error<<D as Decompressor>::Error>> {
+                if frame_number < self.frames.len() {
+                    decompressor.decompress(buffer, self.frames[frame_number])
+                        .map_err(|e| Error::Decompression(e))
+                } else {
+                    Err(Error::FrameOutOfRange)
+                }
             }
-        //     pub fn get_compressed_frame_data(
-        //         &self,
-        //         frame_number: usize,
-        //     ) -> Option<&'static [u8]> {
-        //         if frame_number < self.frames.len() {
-        //             Some(self.frames[frame_number])
-        //         } else {
-        //             None
-        //         }
-        //     }
-        //     #[doc = "This is a test docstring"]
-        //     pub fn copy_compressed_frame_data_to_buffer(
-        //         &self,
-        //         frame_number: usize,
-        //         buffer: &mut[u8; N],
-        //     ) -> Option<usize> {
-        //         if frame_number < self.frames.len() {
-        //             let source_bytes = self.frames[frame_number as usize];
-        //             buffer[..source_bytes.len()].copy_from_slice(source_bytes);
-        //             Some(source_bytes.len())
-        //         } else {
-        //             None
-        //         }
-        //     }
-        //     pub fn as_iter(&self) -> FrameIterator {
-        //         FrameIterator::new(self.frames)
-        //     }
+            pub fn get_compressed_frame_data<D: Decompressor>(
+                &self,
+                frame_number: usize,
+            ) -> Result<&'static [u8], Error<<D as Decompressor>::Error>> {
+                if frame_number < self.frames.len() {
+                    Ok(self.frames[frame_number])
+                } else {
+                    Err(Error::FrameOutOfRange)
+                }
+            }
+            #[doc = "This is a test docstring"]
+            pub fn copy_compressed_frame_data_to_buffer<D: Decompressor>(
+                &self,
+                frame_number: usize,
+                buffer: &mut[u8; N],
+            ) -> Result<usize, Error<<D as Decompressor>::Error>> {
+                if frame_number < self.frames.len() {
+                    let source_bytes = self.frames[frame_number as usize];
+                    buffer[..source_bytes.len()].copy_from_slice(source_bytes);
+                    Ok(source_bytes.len())
+                } else {
+                    Err(Error::FrameOutOfRange)
+                }
+            }
+            pub fn as_iter(&self) -> FrameIterator {
+                FrameIterator::new(self.frames)
+            }
         }
 
-        // pub struct FrameIterator {
-        //     frames: &'static [&'static [u8]],
-        //     current_frame: usize,
-        // }
-        // impl FrameIterator {
-        //     pub fn new(frames: &'static [&'static [u8]]) -> Self {
-        //         Self {
-        //             frames,
-        //             current_frame: 0,
-        //         }
-        //     }
-        // }
-        // impl Iterator for FrameIterator {
-        //     type Item = &'static [u8];
+        pub struct FrameIterator {
+            frames: &'static [&'static [u8]],
+            current_frame: usize,
+        }
+        impl FrameIterator {
+            pub fn new(frames: &'static [&'static [u8]]) -> Self {
+                Self {
+                    frames,
+                    current_frame: 0,
+                }
+            }
+        }
+        impl Iterator for FrameIterator {
+            type Item = &'static [u8];
 
-        //     fn next(&mut self) -> Option<Self::Item> {
-        //         if self.current_frame < self.frames.len() {
-        //             let return_val = Some(self.frames[self.current_frame]);
-        //             self.current_frame += 1;
-        //             return_val
-        //         } else {
-        //             None
-        //         }
-        //     }
-        // }
+            fn next(&mut self) -> Option<Self::Item> {
+                if self.current_frame < self.frames.len() {
+                    let return_val = Some(self.frames[self.current_frame]);
+                    self.current_frame += 1;
+                    return_val
+                } else {
+                    None
+                }
+            }
+        }
     }
 }
 
