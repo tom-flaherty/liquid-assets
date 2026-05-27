@@ -40,7 +40,9 @@ pub fn run() {
     let decompressor = ZlibDecompressor {};
 
     // Decompress a single static asset
-    assets::ESPRESSIF.decompress(&mut buffer, &decompressor).unwrap();
+    assets::ESPRESSIF
+        .decompress(&mut buffer, &decompressor)
+        .unwrap();
 
     rprintln!("Decompression took {:?}", start_time.elapsed());
 
@@ -76,8 +78,14 @@ pub fn run() {
     .unwrap();
 
     // Decompress all frames in an animation using the frame iterator
-    for frame in assets::GITHUB.as_iter() {
-        
+    for (frame_index, frame) in assets::GITHUB.as_iter().enumerate() {
+        let start_time = Instant::now();
+        frame.decompress(&mut buffer, &decompressor).unwrap();
+        rprintln!(
+            "Decompressed frame {} in {}",
+            frame_index + 1,
+            start_time.elapsed()
+        )
     }
 
     // assets::LOADING.copy_compressed_frame_data_to_buffer();

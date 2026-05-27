@@ -271,13 +271,13 @@ fn define_structs() -> proc_macro2::TokenStream {
             }
         }
         impl Iterator for FrameIterator {
-            type Item = &'static [u8];
+            type Item = StaticAsset;
 
             fn next(&mut self) -> Option<Self::Item> {
                 if self.current_frame < self.frames.len() {
-                    let return_val = Some(self.frames[self.current_frame]);
+                    let data = self.frames[self.current_frame];
                     self.current_frame += 1;
-                    return_val
+                    Some(StaticAsset { data })
                 } else {
                     None
                 }
