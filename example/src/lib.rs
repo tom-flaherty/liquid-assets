@@ -1,13 +1,28 @@
 #![no_std]
 
+use asset_decompression::Decompressor;
 use esp_hal::time::Instant;
-// use miniz_oxide::deflate::compress_to_vec;
-use miniz_oxide::inflate::decompress_slice_iter_to_slice;
 use rtt_target::rprintln;
 
 const BUFFER_SIZE: usize = 128 * 128 * 2;
 
-// struct Decompressor {}
+struct ZlibDecompressor {}
+impl Decompressor for ZlibDecompressor {
+    fn decompress<const N: usize>(
+        &self,
+        buffer: &mut [u8; N],
+        compressed_data: &[u8],
+    ) -> Result<(), ()> {
+        miniz_oxide::inflate::decompress_slice_iter_to_slice(
+            buffer,
+            core::iter::once(compressed_data),
+            false,
+            false,
+        )
+        .map_err(|_e| ())?;
+        Ok(())
+    }
+}
 
 // const DEC: Decompressor = Decompressor {};
 
@@ -18,21 +33,27 @@ asset_decompression::include_graphics!("graphics-bin", BUFFER_SIZE);
 // asset_decompression::include_graphics!("graphics-bin", 32768);
 
 pub fn run() {
-    let mut frame_buffer = [0_u8; BUFFER_SIZE];
+    let mut buffer = [0_u8; BUFFER_SIZE];
 
     let start_time = Instant::now();
 
-    let _bytes_wrote = decompress_slice_iter_to_slice(
-        &mut frame_buffer,
-        core::iter::once(assets::ESPRESSIF.bytes),
-        false,
-        false,
-    )
-    .unwrap();
+    let decompressor = ZlibDecompressor {};
 
-    for frame in assets::LOADING.as_iter() {
-        rprintln!("{:?}", frame[0]);
-    }
+    assets::ESPRESSIF
+        .decompress(&mut buffer, &decompressor)
+        .unwrap();
+
+    // let _bytes_wrote = decompress_slice_iter_to_slice(
+    //     &mut frame_buffer,
+    //     core::iter::once(assets::ESPRESSIF.bytes),
+    //     false,
+    //     false,
+    // )
+    // .unwrap();
+
+    // for frame in assets::LOADING.as_iter() {
+    //     rprintln!("{:?}", frame[0]);
+    // }
 
     let duration = start_time.elapsed();
 

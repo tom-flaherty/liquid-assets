@@ -91,7 +91,7 @@ fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
 
     quote! {
         pub const #asset_name: StaticAsset = StaticAsset {
-            bytes: include_bytes!(#path_to_bin).as_slice(),
+            data: include_bytes!(#path_to_bin).as_slice(),
         };
     }
 }
@@ -187,7 +187,19 @@ fn process_asset_name(asset_dir_entry: &DirEntry) -> proc_macro2::TokenStream {
 fn define_structs() -> proc_macro2::TokenStream {
     quote! {
         pub struct StaticAsset {
-            pub bytes: &'static [u8],
+            data: &'static [u8],
+        }
+        impl StaticAsset {
+            pub fn get_comressed_data(&self) -> &'static [u8] {
+                self.data
+            }
+            pub fn decompress<const N: usize>(
+                &self,
+                buffer: &mut [u8; N],
+                decompressor: &impl Decompressor
+            ) -> Result<(),()> {
+                decompressor.decompress(buffer, self.data)
+            }
         }
 
         pub struct AnimatedAsset<const N: usize> {
