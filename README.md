@@ -12,25 +12,18 @@ Or
 
 # TODO
 
-- Generate the animation assets
 - Better cargo tests
-- macro which take graphics output file as a paramter, and generates module
-with all the graphics. Animations are provided as an iterator
-- Crate which provides build tools, which can be added to build.rs and automatically
-rebuild assets when the input folder changes
-- Should the crate which provides compression also provide the decompression method?
+- Add another way to build the assets, for people who don't want auto rebuilds
+in build.rs
 - How to support other display sizes, other RGB standards, transparency, etc
-- Support non-png input files
-
 
 - There are tonnes of unwraps which may not produce intuivive outputs
 - The compression code needs to be split into submodules and subfunctions
 
-
 - Add MIPIDSI library to the c3 example
 
-
 - Add postcard serialization so you can embed image width and height into the compressed data?
+- Add carful support for turning decompressed data into a embedded_graphics::Image
 - You've got a mix of 'graphics' and 'assets'. Change everything to assets
 - Give the repo a witty name
 - We added REBUILD_GRAPHICS=1 to rebuild the graphics, but this also rebuilds when
