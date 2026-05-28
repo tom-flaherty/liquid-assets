@@ -1,6 +1,7 @@
+use crate::Compressor;
 use image::{DynamicImage, EncodableLayout as _, ImageReader};
 use std::{
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
     time::{Duration, Instant},
 };
@@ -62,7 +63,9 @@ impl AssetProcessor {
         input_path: &Path,
         output_dir: &Path,
         compressor: &C,
-    ) {
+    ) where
+        <C as crate::Compressor>::Error: fmt::Debug,
+    {
         let start_time = Instant::now();
         for asset in fs::read_dir(input_path).unwrap() {
             let asset = asset.unwrap();
@@ -111,12 +114,14 @@ Took {:?}",
 
 // Private functions
 impl AssetProcessor {
-    fn process_static_asset<C: crate::Compressor>(
+    fn process_static_asset<C: Compressor>(
         &mut self,
         static_asset_path: &Path,
         output_dir: &Path,
         compressor: &C,
-    ) {
+    ) where
+        <C as Compressor>::Error: fmt::Debug,
+    {
         // Ensure the file extension is a valid image file
         let file_name_lowercase = static_asset_path
             .file_name()
@@ -192,7 +197,9 @@ impl AssetProcessor {
         animated_asset_path: &Path,
         output_dir: &Path,
         compressor: &C,
-    ) {
+    ) where
+        <C as Compressor>::Error: fmt::Debug,
+    {
         let animation_name_lowercase = animated_asset_path
             .file_name()
             .unwrap()
@@ -317,9 +324,7 @@ impl AssetProcessor {
 
             let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
 
-            let compressed_data = compressor
-                .compress(&uncompressed_data.as_bytes())
-                .expect("`compress` function failed");
+            let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
 
             // Statistics
             self.total_uncompressed_bytes += uncompressed_data.len() as u32;

@@ -27,12 +27,14 @@ use dir::prepare_output_directory;
 use crate::processing::AssetProcessor;
 pub use crate::processing::TargetColorFormat;
 use std::{
-    fs,
+    fmt, fs,
     path::{Path, PathBuf},
 };
 
 pub trait Compressor {
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()>;
+    type Error;
+
+    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
 pub fn rebuild_graphics_if_changed<C: Compressor>(
@@ -40,7 +42,9 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
     output_dir: &'static str,
     target_color_format: TargetColorFormat,
     compressor: C,
-) {
+) where
+    <C as Compressor>::Error: fmt::Debug,
+{
     let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let input_path = PathBuf::from(&cargo_manifest_dir).join(Path::new(input_dir));
 
@@ -89,7 +93,9 @@ mod tests {
 
     struct ZlibCompressor {}
     impl Compressor for ZlibCompressor {
-        fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()> {
+        type Error = ();
+
+        fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
             const COMPRESSION_LEVEL: u8 = 5;
             Ok(miniz_oxide::deflate::compress_to_vec(
                 input_bytes,
