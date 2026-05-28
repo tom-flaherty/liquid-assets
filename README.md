@@ -23,18 +23,16 @@ This is a typical embedded Rust project structure:
     └── lib.rs
 ```
 
-In the assets directory, there is an image called `espressif.png` (referred to as a static asset), and two animations - one called `github` and one called `loading` (referred to as animated assets). Each animation folder contains the frames to display that animation, with a number suffixed to the name.
+In the assets directory, there is an image called `espressif.png` (referred to as a static asset), and two animations - one called `github` and one called `loading` (referred to as animated assets). Each animation folder contains the frames to display that animation, with a number suffixed to the name. Non-image files can be added (perhaps notes about this animation), and they will be ignored
 
 ```
 assets
 ├── espressif.png
 ├── github
-│   ├── credit.txt
 │   ├── frame_0001.png
 │   ├── frame_0002.png
 │   └── ...
 └── loading
-    ├── credit.txt
     ├── frame_0001.png
     ├── frame_0002.png
     └── ...
