@@ -10,8 +10,11 @@
 use esp_hal::clock::CpuClock;
 use esp_hal::main;
 use esp_hal::time::{Duration, Instant};
+#[cfg(not(feature = "add_display"))]
+use example::run_benchmark;
+#[cfg(feature = "add_display")]
+use example::run_display_loop;
 use rtt_target::rprintln;
-use example::run;
 
 #[panic_handler]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
@@ -37,11 +40,16 @@ fn main() -> ! {
     rtt_target::rtt_init_print!();
 
     let config = esp_hal::Config::default().with_cpu_clock(CpuClock::max());
-    let _peripherals = esp_hal::init(config);
+    #[allow(unused)]
+    let peripherals = esp_hal::init(config);
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320);
 
-    run();
+    #[cfg(not(feature = "add_display"))]
+    run_benchmark();
+
+    #[cfg(feature = "add_display")]
+    run_display_loop(peripherals);
 
     loop {
         rprintln!("End!");

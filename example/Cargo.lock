@@ -821,6 +821,7 @@ name = "example"
 version = "0.1.0"
 dependencies = [
  "critical-section",
+ "embedded-hal 1.0.0",
  "esp-alloc",
  "esp-bootloader-esp-idf",
  "esp-hal",

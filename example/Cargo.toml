@@ -19,6 +19,7 @@ rtt-target = "0.6.2"
 
 liquid-assets-inflate = { path = "../liquid-assets-inflate" }
 miniz_oxide = "0.9.1"
+embedded-hal = { version = "1.0.0", optional = true }
 
 [build-dependencies]
 liquid-assets-deflate = { path = "../liquid-assets-deflate" }
@@ -37,3 +38,7 @@ lto = 'fat'
 opt-level = 's'
 
 [workspace]
+
+[features]
+default = ["add_display"]
+add_display = ["embedded-hal"]
