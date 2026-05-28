@@ -1,19 +1,19 @@
 use image::{DynamicImage, EncodableLayout as _, ImageReader};
 use std::{
     fs,
-    path::Path,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
-use strum_macros::EnumString;
+use strum_macros::{Display, EnumString};
 
 pub enum TargetColorFormat {
     Rgb565,
 }
 
 /// These are the image formats supported by the image crate
-#[derive(EnumString, Debug, PartialEq, Clone, Copy)]
+#[derive(EnumString, Debug, PartialEq, Clone, Copy, Display)]
 #[strum(serialize_all = "snake_case")]
-enum ImageFormat {
+enum ImageFileFormat {
     Avif,
     Bmp,
     Dds,
@@ -33,7 +33,7 @@ enum ImageFormat {
 
 pub struct AssetProcessor {
     target_color_format: TargetColorFormat,
-    // Some stats
+    // Statistics
     static_assets_found: u32,
     animated_assets_found: u32,
     total_animation_frames: u32,
@@ -117,22 +117,73 @@ impl AssetProcessor {
         output_dir: &Path,
         compressor: &C,
     ) {
+        // Ensure the file extension is a valid image file
+        let file_name_lowercase = static_asset_path
+            .file_name()
+            .expect(
+                format!(
+                    "Failed to get file name for {}",
+                    static_asset_path.to_str().unwrap()
+                )
+                .as_str(),
+            )
+            .to_str()
+            .expect(
+                format!(
+                    "Failed to convert file name to str {}",
+                    static_asset_path.to_str().unwrap()
+                )
+                .as_str(),
+            )
+            .to_ascii_lowercase();
+
+        let file_format = Path::new(&file_name_lowercase)
+            .extension()
+            .expect(format!("Could not get extension for {}", file_name_lowercase).as_str())
+            .to_str()
+            .expect(
+                format!(
+                    "Failed to convert extension to str for {}",
+                    file_name_lowercase
+                )
+                .as_str(),
+            );
+
+        match file_format.parse::<ImageFileFormat>() {
+            Ok(_file_format) => println!("Compressing {}", file_name_lowercase),
+            Err(_e) => {
+                println!("Skipping non-image file {}", file_name_lowercase);
+                return;
+            }
+        }
+
+        // Ensure the asset name is snake case
+        let file_name_no_ext = Path::new(&file_name_lowercase)
+            .with_extension("")
+            .file_name()
+            .expect(format!("Failed to get file name for {}", file_name_lowercase).as_str())
+            .to_str()
+            .expect(format!("Failed to convert file name to str {}", file_name_lowercase).as_str())
+            .to_string();
+
+        if !is_snake_case(&file_name_no_ext) {
+            panic!("Asset name must be snake_case: {}", file_name_lowercase);
+        }
+
         let image = ImageReader::open(static_asset_path)
-            .unwrap()
+            .expect(format!("Failed to open image {}", file_name_lowercase).as_str())
             .decode()
-            .unwrap();
+            .expect(format!("Failed to decode image {}", file_name_lowercase).as_str());
 
         let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
 
-        // Compress
         let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
 
         self.total_compressed_bytes += compressed_data.len() as u32;
 
-        let output_filename = static_asset_path.with_extension("bin");
-        let output_filename = output_filename.file_name().unwrap();
-        let mut output_path = output_dir.to_path_buf();
-        output_path.push(output_filename);
+        let output_path =
+            PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("bin"));
+
         fs::write(output_path, compressed_data.as_bytes()).unwrap();
     }
 
@@ -142,106 +193,152 @@ impl AssetProcessor {
         output_dir: &Path,
         compressor: &C,
     ) {
-        // TODO create the directory for the output frames to go
-        let mut animation_dir = output_dir.to_path_buf();
-        animation_dir.push(animated_asset_path.file_name().unwrap());
-        fs::create_dir(animation_dir.as_path()).unwrap();
+        let animation_name_lowercase = animated_asset_path
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_ascii_lowercase();
 
-        // Variable to ensure all images are the same type
-        let mut animation_frame_file_format: Option<ImageFormat> = None;
+        if !is_snake_case(&animation_name_lowercase) {
+            panic!(
+                "Asset name must be snake_case: {}",
+                animation_name_lowercase
+            );
+        }
+
+        let animated_output_dir = output_dir
+            .to_path_buf()
+            .join(animated_asset_path.file_name().unwrap());
+
+        fs::create_dir(animated_output_dir.as_path()).unwrap();
+
+        // Used to ensure all images have the same file format
+        let mut image_file_format: Option<ImageFileFormat> = None;
+
+        // Frame numbers will be added to this vec in a non-deterministic order
         let mut frame_numbers: Vec<u32> = Vec::new();
 
-        // Note that read_dir doesn't read files in any particular order (i.e. won't be alphabetical)
-        for entry in fs::read_dir(animated_asset_path).unwrap() {
-            let entry = entry.unwrap();
+        // read_dir lists files in a non-deterministic (and likely non-alphabetical) order
+        for frame in fs::read_dir(animated_asset_path).unwrap() {
+            let frame = frame.unwrap();
 
-            let file_name = entry.file_name().to_str().unwrap().to_lowercase();
-            let file_format = match entry.path().extension() {
+            if !frame
+                .file_type()
+                .expect(
+                    format!(
+                        "Failed to determine file type for frame in {}",
+                        animation_name_lowercase
+                    )
+                    .as_str(),
+                )
+                .is_file()
+            {
+                panic!(
+                    "Unexpected non-file item in animation directory {}",
+                    animation_name_lowercase
+                )
+            }
+
+            // Get file name as a string with no extension
+            let file_name = frame
+                .path()
+                .with_extension("")
+                .file_name()
+                .unwrap()
+                .to_str()
+                .expect(
+                    format!(
+                        "Failed to convert frame file name to str for animation {}",
+                        animation_name_lowercase
+                    )
+                    .as_str(),
+                )
+                .to_lowercase();
+
+            let file_format = match frame.path().extension() {
                 Some(file_format_os_str) => file_format_os_str.to_str().unwrap().to_string(),
                 None => String::new(),
             };
 
-            let entry_image_format = match file_format.parse::<ImageFormat>() {
-                Ok(image_format) => {
-                    println!("Compressing {}", file_name);
-                    image_format
-                }
+            let frame_image_format = match file_format.parse::<ImageFileFormat>() {
+                Ok(image_format) => image_format,
                 Err(_e) => {
                     println!(
                         "Skipping file `{}` as it's not a valid image file",
-                        file_name
+                        frame.file_name().to_str().unwrap()
                     );
                     continue;
                 }
             };
 
-            match animation_frame_file_format {
+            let frame_number = self.get_frame_number(&file_name).expect(
+                format!(
+                    "Failed to get frame number for animation {} file name {}",
+                    animation_name_lowercase, file_name
+                )
+                .as_str(),
+            );
+            if frame_numbers.contains(&frame_number) {
+                panic!(
+                    "Animation {} contains duplicate frame number {}",
+                    animation_name_lowercase, frame_number
+                );
+            }
+            frame_numbers.push(frame_number);
+
+            println!(
+                "Compressing animation `{}` frame {}",
+                animation_name_lowercase, frame_number
+            );
+
+            match image_file_format {
                 Some(format) => {
-                    if format != entry_image_format {
+                    // Ensure this frame has the same image file format as previous frame(s)
+                    if format != frame_image_format {
                         panic!(
-                            "Animation contains more than one image type {}",
-                            animated_asset_path.to_str().unwrap()
+                            "Animation `{}` contains both {} and {} image file formats (all frames should have the same file format)",
+                            animation_name_lowercase, frame_image_format, format,
                         )
                     }
                 }
-                None => animation_frame_file_format = Some(entry_image_format),
+                None => {
+                    image_file_format = {
+                        // This is the first animation frame found, so set the variable
+                        Some(frame_image_format)
+                    }
+                }
             }
 
-            let entry_file_name_no_ext = entry.path().with_extension("");
-            let entry_file_name_no_ext = entry_file_name_no_ext
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-                .to_string();
-
-            let frame_number = {
-                // Trim the numeric ending of the file name
-                let trimmed_string = entry_file_name_no_ext.trim_end_matches(char::is_numeric);
-                if trimmed_string.is_empty() {
-                    panic!(
-                        "Invalid animation frame name (expected non-numeric beginning) {:?}",
-                        file_name
-                    );
-                }
-                // Use this to get the numeric part
-                let numeric_suffix = &entry_file_name_no_ext[trimmed_string.len()..];
-                match numeric_suffix.parse::<u32>() {
-                    Ok(frame_number) => frame_number,
-                    Err(_e) => panic!(
-                        "Invalid animation frame name (expected positive numeric ending) {:?}",
-                        file_name
-                    ),
-                }
-            };
-            frame_numbers.push(frame_number);
-
-            // TODO compress the frame
-            let image = ImageReader::open(entry.path()).unwrap().decode().unwrap();
+            let image = ImageReader::open(frame.path())
+                .expect(format!("Failed to open image {}", animation_name_lowercase).as_str())
+                .decode()
+                .expect(format!("Failed to decode image {}", animation_name_lowercase).as_str());
 
             let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
 
-            // For stats add uncompressed image size
+            let compressed_data = compressor
+                .compress(&uncompressed_data.as_bytes())
+                .expect("`compress` function failed");
+
+            // Statistics
             self.total_uncompressed_bytes += uncompressed_data.len() as u32;
-
-            let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
-
             self.total_compressed_bytes += compressed_data.len() as u32;
             self.total_animation_frames += 1;
 
-            // let output_filename = static_asset_path.with_extension("bin");
-            let mut output_path = animation_dir.clone();
-            output_path.push(format!("FRAME{}.bin", frame_number));
-            fs::write(output_path, compressed_data.as_bytes()).unwrap();
+            let frame_output_path =
+                animated_output_dir.join(Path::new(&format!("FRAME{}.bin", frame_number)));
 
-            // TODO write the iterator code in the proc macro crate
-            // TODO write the compressor and decompressor traits so users provide their own
-            // TODO snake case check?
+            fs::write(frame_output_path, compressed_data.as_bytes()).unwrap();
         }
+
         frame_numbers.sort();
+
         if frame_numbers[0] == 0 {
             panic!("Frames should be numbered starting with 1, not 0");
         }
+
+        // Ensure one of each frame exists
         for (index, frame_number) in frame_numbers.iter().enumerate() {
             if *frame_number != (index as u32) + 1 {
                 panic!(
@@ -249,6 +346,19 @@ impl AssetProcessor {
                     (index as u32) + 1,
                     animated_asset_path.to_str().unwrap()
                 );
+            }
+        }
+    }
+
+    fn get_frame_number(&self, frame_file_name_str: &String) -> Result<u32, ()> {
+        let trimmed_string = frame_file_name_str.trim_end_matches(char::is_numeric);
+        if trimmed_string.is_empty() {
+            Err(())
+        } else {
+            let numeric_suffix = &frame_file_name_str[trimmed_string.len()..];
+            match numeric_suffix.parse::<u32>() {
+                Ok(frame_number) => Ok(frame_number),
+                Err(_e) => Err(()),
             }
         }
     }

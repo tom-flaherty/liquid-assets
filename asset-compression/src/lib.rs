@@ -28,7 +28,7 @@ use crate::processing::AssetProcessor;
 pub use crate::processing::TargetColorFormat;
 use std::{
     fs,
-    path::{Path, PathBuf}, time::Instant,
+    path::{Path, PathBuf},
 };
 
 pub trait Compressor {
