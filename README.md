@@ -1,9 +1,9 @@
-# `cashew`
+# `liquid-assets`
 
-`cashew` is an assets pipeline for embedded Rust. It has two parts:
+`liquid-assets` is an assets pipeline for embedded Rust. It has two parts:
 
-- `cashew-deflate` is used to compress source images into binaries. It uses `std` as it doesn't run on the embedded hardware.
-- `cashew-inflate` is used to decompress those binaries into images. It uses `no_std`.
+- `liquid-assets-deflate` is used to compress source images into binaries. It uses `std` as it doesn't run on the embedded hardware.
+- `liquid-assets-inflate` is used to decompress those binaries into images. It uses `no_std`.
 
 Any `no_std` compatible compression library can be used.
 
@@ -40,16 +40,16 @@ assets
     └── ...
 ```
 
-To use `cashew`, first add `cashew-deflate` to the `[dev-dependencies]` of your Cargo.toml.
+To use `liquid-assets`, first add `liquid-assets-deflate` to the `[dev-dependencies]` of your Cargo.toml.
 
 ```
 [build-dependencies]
-cashew-deflate = { git = "git@github.com:tom-flaherty/cashew.git", version = "0.1.0" }
+liquid-assets-deflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.0" }
 ```
 
-Next, in your `build.rs` file, implement the `cashew_deflate::Compressor` trait onto a struct. You can probably just copy from `examples/build.rs` as examples for common compression libraries are included.
+Next, in your `build.rs` file, implement the `liquid-assets_deflate::Compressor` trait onto a struct. You can probably just copy from `examples/build.rs` as examples for common compression libraries are included.
 
-Run the `cashew_deflate::include_assets_if_changed` function, providing:
+Run the `liquid_assets_deflate::include_assets_if_changed` function, providing these parameters:
 
 - The assets source directory (relative to CARGO_MANIFEST_DIR)
 - The assets binary directory (relative to CARGO_MANIFEST_DIR), which will be created. You may want to add this to your .gitignore
@@ -57,7 +57,7 @@ Run the `cashew_deflate::include_assets_if_changed` function, providing:
 - A reference to a struct which has the `Compressor` trait implemented
 
 ```rust
-use cashew_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
+use liquid_assets_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
 
 struct ZlibCompressor {}
 impl Compressor for ZlibCompressor {
@@ -92,14 +92,14 @@ Now when you run `cargo build`, the assets binaries will be built. The assets wi
 
 Next, the deflate component, which uses proc-macro magic.
 
-Add `cashew-inflate` to your Cargo.toml:
+Add `liquid-assets-inflate` to your Cargo.toml:
 
 ```
 [dependencies]
-cashew-inflate = { git = "git@github.com:tom-flaherty/cashew.git", version = "0.1.0" }
+liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.0" }
 ```
 
-In a source file (not inside of a function), invoke the `include_assets` macro, providing a struct which implements the `cashew_inflate::Decompressor` trait. Again, there are some examples you can copy.
+In a source file (not inside of a function), invoke the `include_assets` macro, providing a struct which implements the `liquid_assets_inflate::Decompressor` trait. Again, there are some examples you can copy.
 
 ```rust
 const BUFFER_SIZE: usize = 128 * 128 * 2;
@@ -122,7 +122,7 @@ impl Decompressor for ZlibDecompressor {
     }
 }
 
-cashew_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
+liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
 
 pub fn run() {
     let mut buffer = [0_u8; BUFFER_SIZE];
