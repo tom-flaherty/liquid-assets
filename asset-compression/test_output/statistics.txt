@@ -6,4 +6,4 @@ Compression Statistics:
 622592 uncompressed bytes
 58643 compressed bytes
 10.616647 avg. compression ratio
-Took 135.286554ms
+Took 138.026092ms

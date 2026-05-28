@@ -35,19 +35,12 @@ pub trait Compressor {
     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()>;
 }
 
-#[derive(Debug)]
-pub enum CompError {
-    InputDirNonexistent,
-    OutputDirNonexistent,
-    UnrecognisedFileType,
-}
-
 pub fn rebuild_graphics_if_changed<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
     target_color_format: TargetColorFormat,
     compressor: C,
-) -> Result<(), CompError> {
+) {
     let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let input_path = PathBuf::from(&cargo_manifest_dir).join(Path::new(input_dir));
 
@@ -56,11 +49,11 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
         input_path.as_path().to_str().unwrap()
     );
 
-    if !input_path
-        .try_exists()
-        .map_err(|_| CompError::InputDirNonexistent)?
-    {
-        return Err(CompError::InputDirNonexistent);
+    if !input_path.try_exists().unwrap_or(false) {
+        panic!(
+            "Input directory does not exist {}",
+            input_path.as_path().to_str().unwrap()
+        );
     }
 
     println!("cargo:rerun-if-changed={}", input_path.to_str().unwrap());
@@ -72,11 +65,8 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
 
     prepare_output_directory(output_path.as_path());
 
-    if !output_path
-        .try_exists()
-        .map_err(|_| CompError::OutputDirNonexistent)?
-    {
-        return Err(CompError::OutputDirNonexistent);
+    if !output_path.try_exists().unwrap_or(false) {
+        panic!("Failed to create output directory");
     }
 
     let mut asset_processor = AssetProcessor::new(target_color_format);
@@ -90,8 +80,6 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
         stats.as_bytes(),
     )
     .unwrap();
-
-    Ok(())
 }
 
 // To view output logs when running the test, run `cargo test -- --nocapture`
@@ -118,6 +106,6 @@ mod tests {
             "test_output",
             TargetColorFormat::Rgb565,
             compressor,
-        ).unwrap();
+        )
     }
 }
