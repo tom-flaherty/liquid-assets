@@ -41,7 +41,7 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
     target_color_format: TargetColorFormat,
-    compressor: C,
+    compressor: &C,
 ) where
     <C as Compressor>::Error: fmt::Debug,
 {
@@ -88,7 +88,7 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
 
     let mut asset_processor = AssetProcessor::new(target_color_format);
 
-    asset_processor.process(input_path.as_path(), output_path.as_path(), &compressor);
+    asset_processor.process(input_path.as_path(), output_path.as_path(), compressor);
 
     let stats: String = asset_processor.generate_stats();
     println!("{}", stats);
@@ -124,7 +124,7 @@ mod tests {
             "test_assets",
             "asset-binaries",
             TargetColorFormat::Rgb565,
-            compressor,
+            &compressor,
         )
     }
 }

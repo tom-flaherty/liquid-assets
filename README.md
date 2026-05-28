@@ -21,6 +21,8 @@ Or
 
 - Add MIPIDSI library to the c3 example
 
+- Flood docstrings everywhere, including the proc macro generated code
+
 - Add careful support for turning decompressed data into a embedded_graphics::Image.
 Maybe this should be a feature?
 
