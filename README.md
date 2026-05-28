@@ -12,18 +12,23 @@ Or
 
 # TODO
 
-- Add another way to build the assets, for people who don't want auto rebuilds
-in build.rs
+- You've got a mix of 'graphics' and 'assets'. Change everything to assets
 
-- How to support other display sizes, other RGB standards, transparency, etc
-- Add an error generic for the compressor
+- Add postcard serialization so you can embed image width and height into the compressed data?
+- Add image width and height for all assets
 
-- There are tonnes of unwraps which may not produce intuivive outputs
-- The compression code needs to be split into submodules and subfunctions
+- Ensure all frames in an animation are the same size
 
 - Add MIPIDSI library to the c3 example
 
-- Add postcard serialization so you can embed image width and height into the compressed data?
-- Add carful support for turning decompressed data into a embedded_graphics::Image
-- You've got a mix of 'graphics' and 'assets'. Change everything to assets
+- Add careful support for turning decompressed data into a embedded_graphics::Image.
+Maybe this should be a feature?
+
 - Give the repo a witty name
+
+# Long Term TODO
+
+- Support for displays other using colour formats other than RGB565
+- Support for transparency
+- Add a way to build assets without adding to build.rs
+- Support for bitmaps?
