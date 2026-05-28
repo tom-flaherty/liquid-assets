@@ -63,6 +63,19 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
     println!("cargo:rerun-if-changed={}", input_path.to_str().unwrap());
     println!("cargo:rerun-if-env-changed=REBUILD_ASSETS");
 
+    match std::env::var("REBUILD_ASSETS") {
+        Ok(value) => {
+            // Assume rebuild is due to REBUILD_ASSETS being set. Only rebuild if it is set to "1"
+            if value != "1" {
+                return;
+            }
+        }
+        Err(_) => {
+            // REBUILD_ASSETS is not set - assume rebuild is due to assets changing
+            ()
+        }
+    }
+
     let output_path = PathBuf::from(&cargo_manifest_dir).join(Path::new(output_dir));
 
     println!("Assets output path is {}", output_path.to_str().unwrap());

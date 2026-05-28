@@ -2,7 +2,10 @@ use asset_compression::{Compressor, TargetColorFormat, rebuild_graphics_if_chang
 
 struct ZlibCompressor {}
 impl Compressor for ZlibCompressor {
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()> {
+    // The compression is infallible
+    type Error = ();
+
+    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
         const COMPRESSION_LEVEL: u8 = 5;
         Ok(miniz_oxide::deflate::compress_to_vec(
             input_bytes,
@@ -13,15 +16,14 @@ impl Compressor for ZlibCompressor {
 
 fn main() {
     // todo: Does the position of this function within main affect output?
-    let zlib_compressos = ZlibCompressor {};
+    let zlib_compressor = ZlibCompressor {};
 
     rebuild_graphics_if_changed(
         "./graphics-src",
         "./graphics-bin",
         TargetColorFormat::Rgb565,
-        zlib_compressos,
-    )
-    .unwrap();
+        zlib_compressor,
+    );
 
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
