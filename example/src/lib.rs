@@ -1,6 +1,6 @@
 #![no_std]
 
-use cashew_inflate::Decompressor;
+use liquid_assets_inflate::Decompressor;
 use esp_hal::time::Instant;
 use rtt_target::rprintln;
 
@@ -24,8 +24,8 @@ impl Decompressor for ZlibDecompressor {
     }
 }
 
-cashew_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
-// cashew_inflate::include_assets!("asset-binaries", 32768);
+liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
+// liquid_assets_inflate::include_assets!("asset-binaries", 32768);
 
 pub fn run() {
     let mut buffer = [0_u8; BUFFER_SIZE];
