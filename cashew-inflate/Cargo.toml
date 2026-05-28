@@ -1,7 +1,0 @@
-[package]
-name = "cashew-inflate"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-cashew-inflate-proc-macro = { path = "./cashew-inflate-proc-macro" }

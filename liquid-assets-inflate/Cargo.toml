@@ -1,0 +1,7 @@
+[package]
+name = "liquid-assets-inflate"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+liquid-assets-inflate-proc-macro = { path = "./liquid-assets-inflate-proc-macro" }

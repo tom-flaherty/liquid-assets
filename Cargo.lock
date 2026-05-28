@@ -159,33 +159,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
 
 [[package]]
-name = "cashew-deflate"
-version = "0.1.0"
-dependencies = [
- "image",
- "miniz_oxide 0.9.1",
- "strum",
- "strum_macros",
-]
-
-[[package]]
-name = "cashew-inflate"
-version = "0.1.0"
-dependencies = [
- "cashew-inflate-proc-macro",
-]
-
-[[package]]
-name = "cashew-inflate-proc-macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "cc"
 version = "1.2.62"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -450,6 +423,33 @@ checksum = "f12a681b7dd8ce12bff52488013ba614b869148d54dd79836ab85aafdd53f08d"
 dependencies = [
  "arbitrary",
  "cc",
+]
+
+[[package]]
+name = "liquid-assets-deflate"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "miniz_oxide 0.9.1",
+ "strum",
+ "strum_macros",
+]
+
+[[package]]
+name = "liquid-assets-inflate"
+version = "0.1.0"
+dependencies = [
+ "liquid-assets-inflate-proc-macro",
+]
+
+[[package]]
+name = "liquid-assets-inflate-proc-macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
 ]
 
 [[package]]
