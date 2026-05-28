@@ -12,8 +12,6 @@ Or
 
 # TODO
 
-- You've got a mix of 'graphics' and 'assets'. Change everything to assets
-
 - Add postcard serialization so you can embed image width and height into the compressed data?
 - Add image width and height for all assets
 

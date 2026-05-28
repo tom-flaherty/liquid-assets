@@ -1,4 +1,4 @@
-use asset_compression::{Compressor, TargetColorFormat, rebuild_graphics_if_changed};
+use asset_compression::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
 
 struct ZlibCompressor {}
 impl Compressor for ZlibCompressor {
@@ -18,11 +18,11 @@ fn main() {
     // todo: Does the position of this function within main affect output?
     let zlib_compressor = ZlibCompressor {};
 
-    rebuild_graphics_if_changed(
+    rebuild_assets_if_changed(
         "./assets",
         "./asset-binaries",
         TargetColorFormat::Rgb565,
-        zlib_compressor,
+        &zlib_compressor,
     );
 
     linker_be_nice();

@@ -12,7 +12,7 @@ enum BufferSizeParam {
 }
 
 struct MacroArgs {
-    graphics_path: String,
+    assets_path: String,
     buffer_size: BufferSizeParam,
 }
 
@@ -26,7 +26,7 @@ impl Parse for MacroArgs {
         };
 
         Ok(MacroArgs {
-            graphics_path: lit_str.value(),
+            assets_path: lit_str.value(),
             buffer_size,
         })
     }
@@ -34,9 +34,9 @@ impl Parse for MacroArgs {
 
 #[proc_macro]
 #[proc_macro_error]
-pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn include_assets(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let MacroArgs {
-        graphics_path,
+        assets_path,
         buffer_size,
     } = syn::parse_macro_input!(input as MacroArgs);
 
@@ -48,7 +48,7 @@ pub fn include_graphics(input: proc_macro::TokenStream) -> proc_macro::TokenStre
         ),
     }
     .into();
-    target_dir.push(Path::new(&graphics_path));
+    target_dir.push(Path::new(&assets_path));
 
     let target_dir_read = match fs::read_dir(&target_dir) {
         Ok(read_dir) => read_dir,

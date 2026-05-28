@@ -37,7 +37,7 @@ pub trait Compressor {
     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
-pub fn rebuild_graphics_if_changed<C: Compressor>(
+pub fn rebuild_assets_if_changed<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
     target_color_format: TargetColorFormat,
@@ -102,7 +102,7 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
 // To view output logs when running the test, run `cargo test -- --nocapture`
 #[cfg(test)]
 mod tests {
-    use super::{Compressor, TargetColorFormat, rebuild_graphics_if_changed};
+    use super::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
 
     struct ZlibCompressor {}
     impl Compressor for ZlibCompressor {
@@ -120,8 +120,8 @@ mod tests {
     #[test]
     fn check_decompression() {
         let compressor = ZlibCompressor {};
-        rebuild_graphics_if_changed(
-            "test_assets",
+        rebuild_assets_if_changed(
+            "test-assets",
             "asset-binaries",
             TargetColorFormat::Rgb565,
             &compressor,

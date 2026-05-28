@@ -1,6 +1,6 @@
 #![no_std]
 
-pub use my_proc_macro::include_graphics;
+pub use my_proc_macro::include_assets;
 
 pub trait Decompressor {
     type Error;

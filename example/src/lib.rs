@@ -24,8 +24,8 @@ impl Decompressor for ZlibDecompressor {
     }
 }
 
-asset_decompression::include_graphics!("asset-binaries", BUFFER_SIZE);
-// asset_decompression::include_graphics!("graphics-bin", 32768);
+asset_decompression::include_assets!("asset-binaries", BUFFER_SIZE);
+// asset_decompression::include_assets!("asset-binaries", 32768);
 
 pub fn run() {
     let mut buffer = [0_u8; BUFFER_SIZE];
