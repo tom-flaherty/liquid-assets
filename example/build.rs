@@ -15,7 +15,6 @@ impl Compressor for ZlibCompressor {
 }
 
 fn main() {
-    // todo: Does the position of this function within main affect output?
     let zlib_compressor = ZlibCompressor {};
 
     rebuild_assets_if_changed(
