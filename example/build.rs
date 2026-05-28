@@ -19,8 +19,8 @@ fn main() {
     let zlib_compressor = ZlibCompressor {};
 
     rebuild_graphics_if_changed(
-        "./graphics-src",
-        "./graphics-bin",
+        "./assets",
+        "./asset-binaries",
         TargetColorFormat::Rgb565,
         zlib_compressor,
     );

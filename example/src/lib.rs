@@ -24,12 +24,7 @@ impl Decompressor for ZlibDecompressor {
     }
 }
 
-// const DEC: Decompressor = Decompressor {};
-
-// TODO verify that the buffer size can be either a literal or expression
-// TODO verify that it still works if you use a full path (e.g. crate::BUFFER_SIZE)
-// TODO need to ensure this macro isn't called within a function
-asset_decompression::include_graphics!("graphics-bin", BUFFER_SIZE);
+asset_decompression::include_graphics!("asset-binaries", BUFFER_SIZE);
 // asset_decompression::include_graphics!("graphics-bin", 32768);
 
 pub fn run() {
