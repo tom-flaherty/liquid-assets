@@ -1,9 +1,0 @@
-Compression Statistics:
-1 static assets
-2 animated assets
-19 animation frames
-3 total assets
-622592 uncompressed bytes
-58643 compressed bytes
-10.616647 avg. compression ratio
-Took 98.656907ms
