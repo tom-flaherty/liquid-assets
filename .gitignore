@@ -26,4 +26,4 @@ target/
 **/.DS_Store
 
 # Don't add asset binaries
-**/assets-binaries/
+**/asset-binaries/
