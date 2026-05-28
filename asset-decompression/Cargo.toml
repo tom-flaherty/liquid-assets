@@ -1,7 +1,0 @@
-[package]
-name = "asset-decompression"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-my-proc-macro = { path = "./my-proc-macro" }

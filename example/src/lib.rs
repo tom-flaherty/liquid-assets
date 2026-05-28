@@ -1,6 +1,6 @@
 #![no_std]
 
-use asset_decompression::Decompressor;
+use asset_inflate::Decompressor;
 use esp_hal::time::Instant;
 use rtt_target::rprintln;
 
@@ -24,8 +24,8 @@ impl Decompressor for ZlibDecompressor {
     }
 }
 
-asset_decompression::include_assets!("asset-binaries", BUFFER_SIZE);
-// asset_decompression::include_assets!("asset-binaries", 32768);
+asset_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
+// asset_inflate::include_assets!("asset-binaries", 32768);
 
 pub fn run() {
     let mut buffer = [0_u8; BUFFER_SIZE];

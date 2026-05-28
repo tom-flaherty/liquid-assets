@@ -17,11 +17,11 @@ critical-section = "1.2.0"
 esp-alloc = "0.10.0"
 rtt-target = "0.6.2"
 
-asset-decompression = { path = "../asset-decompression" }
+asset-inflate = { path = "../asset-inflate" }
 miniz_oxide = "0.9.1"
 
 [build-dependencies]
-asset-compression = { path = "../asset-compression" }
+asset-deflate = { path = "../asset-deflate" }
 miniz_oxide = "0.9.1"
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html

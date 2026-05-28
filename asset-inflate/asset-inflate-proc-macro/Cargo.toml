@@ -1,5 +1,5 @@
 [package]
-name = "my-proc-macro"
+name = "asset-inflate-proc-macro"
 version = "0.1.0"
 edition = "2024"
 
