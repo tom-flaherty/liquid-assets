@@ -121,8 +121,8 @@ mod tests {
     fn check_decompression() {
         let compressor = ZlibCompressor {};
         rebuild_graphics_if_changed(
-            "test_input",
-            "test_output",
+            "test_assets",
+            "asset-binaries",
             TargetColorFormat::Rgb565,
             compressor,
         )
