@@ -7,3 +7,7 @@ edition = "2024"
 image = "0.25.10"
 strum = "0.28.0"
 strum_macros = "0.28.0"
+
+[dev-dependencies]
+miniz_oxide = "0.9.1"
+

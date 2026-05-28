@@ -1,11 +1,19 @@
 use image::{DynamicImage, EncodableLayout as _, ImageReader};
-use std::{fs, path::Path};
+use std::{
+    fs,
+    path::Path,
+    time::{Duration, Instant},
+};
 use strum_macros::EnumString;
+
+pub enum TargetColorFormat {
+    Rgb565,
+}
 
 /// These are the image formats supported by the image crate
 #[derive(EnumString, Debug, PartialEq, Clone, Copy)]
 #[strum(serialize_all = "snake_case")]
-pub enum ImageFormat {
+enum ImageFormat {
     Avif,
     Bmp,
     Dds,
@@ -23,10 +31,6 @@ pub enum ImageFormat {
     Webp,
 }
 
-pub enum TargetColorFormat {
-    Rgb565,
-}
-
 pub struct AssetProcessor {
     target_color_format: TargetColorFormat,
     // Some stats
@@ -35,6 +39,7 @@ pub struct AssetProcessor {
     total_animation_frames: u32,
     total_uncompressed_bytes: u32,
     total_compressed_bytes: u32,
+    time_taken: Option<Duration>,
 }
 
 // Public functions
@@ -48,6 +53,7 @@ impl AssetProcessor {
             total_animation_frames: 0,
             total_uncompressed_bytes: 0,
             total_compressed_bytes: 0,
+            time_taken: None,
         }
     }
 
@@ -57,6 +63,7 @@ impl AssetProcessor {
         output_dir: &Path,
         compressor: &C,
     ) {
+        let start_time = Instant::now();
         for asset in fs::read_dir(input_path).unwrap() {
             let asset = asset.unwrap();
             let file_type = asset.file_type().unwrap();
@@ -73,23 +80,32 @@ impl AssetProcessor {
                 );
             }
         }
+        self.time_taken = Some(start_time.elapsed());
     }
 
-    pub fn print_stats(&self) {
-        println!("Asset Processor:");
-        println!("    {} static assets", self.static_assets_found);
-        println!("    {} animated assets", self.animated_assets_found);
-        println!("    {} animation frames", self.total_animation_frames);
-        println!(
-            "    {} total assets",
-            self.static_assets_found + self.animated_assets_found
-        );
-        println!("    {} uncompressed bytes", self.total_uncompressed_bytes);
-        println!("    {} compressed bytes", self.total_compressed_bytes);
-        println!(
-            "    {} avg. compression ratio",
-            (self.total_uncompressed_bytes as f32) / (self.total_compressed_bytes as f32)
-        );
+    pub fn generate_stats(&self) -> String {
+        let total_assets = self.static_assets_found + self.animated_assets_found;
+        let compression_ratio =
+            (self.total_uncompressed_bytes as f32) / (self.total_compressed_bytes as f32);
+        format!(
+            "Compression Statistics:
+{} static assets
+{} animated assets
+{} animation frames
+{} total assets
+{} uncompressed bytes
+{} compressed bytes
+{} avg. compression ratio
+Took {:?}",
+            self.static_assets_found,
+            self.animated_assets_found,
+            self.total_animation_frames,
+            total_assets,
+            self.total_uncompressed_bytes,
+            self.total_compressed_bytes,
+            compression_ratio,
+            self.time_taken.unwrap_or_else(|| Duration::MAX)
+        )
     }
 }
 
@@ -146,7 +162,10 @@ impl AssetProcessor {
             };
 
             let entry_image_format = match file_format.parse::<ImageFormat>() {
-                Ok(image_format) => image_format,
+                Ok(image_format) => {
+                    println!("Compressing {}", file_name);
+                    image_format
+                }
                 Err(_e) => {
                     println!(
                         "Skipping file `{}` as it's not a valid image file",
@@ -267,14 +286,14 @@ fn convert_image_to_bytes(
     image_data
 }
 
-// fn is_snake_case(str: &String) -> bool {
-//     if str.is_empty() {
-//         false
-//     } else {
-//         str.chars()
-//             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
-//             && !str.starts_with(|c: char| c.is_ascii_digit())
-//             && !str.contains("__")
-//             && !str.ends_with('_')
-//     }
-// }
+fn is_snake_case(str: &String) -> bool {
+    if str.is_empty() {
+        false
+    } else {
+        str.chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '_')
+            && !str.starts_with(|c: char| c.is_ascii_digit())
+            && !str.contains("__")
+            && !str.ends_with('_')
+    }
+}

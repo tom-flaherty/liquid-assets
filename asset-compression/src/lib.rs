@@ -1,5 +1,3 @@
-use std::path::Path;
-mod compressor;
 /// Expected structure for input directory:
 ///
 /// input
@@ -24,21 +22,25 @@ mod compressor;
 mod dir;
 mod processing;
 
-pub use compressor::Compressor;
-
 use dir::prepare_output_directory;
 
 use crate::processing::AssetProcessor;
 pub use crate::processing::TargetColorFormat;
+use std::{
+    fs,
+    path::{Path, PathBuf}, time::Instant,
+};
+
+pub trait Compressor {
+    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()>;
+}
 
 #[derive(Debug)]
 pub enum CompError {
-    CannotVerifyInputDirExists,
-    CannotVerifyOutputDirExists,
+    InputDirNonexistent,
+    OutputDirNonexistent,
     UnrecognisedFileType,
 }
-
-// TODO it should find all the assets first so that it can print progress, e.g. 22/300
 
 pub fn rebuild_graphics_if_changed<C: Compressor>(
     input_dir: &'static str,
@@ -46,78 +48,76 @@ pub fn rebuild_graphics_if_changed<C: Compressor>(
     target_color_format: TargetColorFormat,
     compressor: C,
 ) -> Result<(), CompError> {
-    let cargo_manifest_str = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let cargo_manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
+    let input_path = PathBuf::from(&cargo_manifest_dir).join(Path::new(input_dir));
 
-    let input_dir_str = format!("{}/{}", cargo_manifest_str, input_dir);
-    let input_dir = Path::new(&input_dir_str);
+    println!(
+        "Assets source path is {}",
+        input_path.as_path().to_str().unwrap()
+    );
 
-    println!("input directory full path is {}", input_dir_str);
-
-    if !input_dir
+    if !input_path
         .try_exists()
-        .map_err(|_| CompError::CannotVerifyInputDirExists)?
+        .map_err(|_| CompError::InputDirNonexistent)?
     {
-        return Err(CompError::CannotVerifyInputDirExists);
+        return Err(CompError::InputDirNonexistent);
     }
 
-    // Tell cargo to rerun the build script whenever this folder has changed
-    println!("cargo:rerun-if-changed={}", input_dir.to_str().unwrap());
-    println!("cargo:rerun-if-env-changed=REBUILD_GRAPHICS");
+    println!("cargo:rerun-if-changed={}", input_path.to_str().unwrap());
+    println!("cargo:rerun-if-env-changed=REBUILD_ASSETS");
 
-    let output_dir_str = format!("{}/{}", cargo_manifest_str, output_dir);
-    let output_dir = Path::new(&output_dir_str);
+    let output_path = PathBuf::from(&cargo_manifest_dir).join(Path::new(output_dir));
 
-    println!("output directory full path is {}", output_dir_str);
+    println!("Assets output path is {}", output_path.to_str().unwrap());
 
-    // Ensure output directory is empty
-    prepare_output_directory(output_dir);
+    prepare_output_directory(output_path.as_path());
 
-    if !output_dir
+    if !output_path
         .try_exists()
-        .map_err(|_| CompError::CannotVerifyOutputDirExists)?
+        .map_err(|_| CompError::OutputDirNonexistent)?
     {
-        return Err(CompError::CannotVerifyOutputDirExists);
+        return Err(CompError::OutputDirNonexistent);
     }
 
     let mut asset_processor = AssetProcessor::new(target_color_format);
-    asset_processor.process(input_dir, output_dir, &compressor);
-    asset_processor.print_stats();
+
+    asset_processor.process(input_path.as_path(), output_path.as_path(), &compressor);
+
+    let stats: String = asset_processor.generate_stats();
+    println!("{}", stats);
+    fs::write(
+        output_path.join("statistics.txt").as_path(),
+        stats.as_bytes(),
+    )
+    .unwrap();
 
     Ok(())
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use image::EncodableLayout;
+// To view output logs when running the test, run `cargo test -- --nocapture`
+#[cfg(test)]
+mod tests {
+    use super::{Compressor, TargetColorFormat, rebuild_graphics_if_changed};
 
-//     #[test]
-//     fn check_decompression() {
-//         use image::ImageReader;
-//         let expected_vec = {
-//             let image = ImageReader::open("./input/espressif.png")
-//                 .unwrap()
-//                 .decode()
-//                 .unwrap();
-//             let mut pixels565: Vec<u16> = Vec::new();
-//             for pixel in image.to_rgb8().pixels() {
-//                 pixels565.push(super::rgb888torgb565(pixel[0], pixel[1], pixel[2]));
-//             }
-//             pixels565
-//         };
-//         let expected_bytes = expected_vec.as_bytes();
+    struct ZlibCompressor {}
+    impl Compressor for ZlibCompressor {
+        fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()> {
+            const COMPRESSION_LEVEL: u8 = 5;
+            Ok(miniz_oxide::deflate::compress_to_vec(
+                input_bytes,
+                COMPRESSION_LEVEL,
+            ))
+        }
+    }
 
-//         let compressed_bytes = include_bytes!("../output/espressif.bin").as_bytes();
-//         let mut output_bytes = [0_u8; 128 * 128 * 2];
-//         let _bytes_wrote = miniz_oxide::inflate::decompress_slice_iter_to_slice(
-//             &mut output_bytes,
-//             core::iter::once(compressed_bytes),
-//             false,
-//             false,
-//         )
-//         .unwrap();
-
-//         assert_eq!(expected_bytes.len(), 128 * 128 * 2);
-
-//         assert_eq!(output_bytes, expected_bytes);
-//     }
-// }
+    #[test]
+    fn check_decompression() {
+        let compressor = ZlibCompressor {};
+        rebuild_graphics_if_changed(
+            "test_input",
+            "test_output",
+            TargetColorFormat::Rgb565,
+            compressor,
+        ).unwrap();
+    }
+}

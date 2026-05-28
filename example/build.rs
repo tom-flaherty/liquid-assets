@@ -1,7 +1,6 @@
 use asset_compression::{Compressor, TargetColorFormat, rebuild_graphics_if_changed};
 
 struct ZlibCompressor {}
-
 impl Compressor for ZlibCompressor {
     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, ()> {
         const COMPRESSION_LEVEL: u8 = 5;
