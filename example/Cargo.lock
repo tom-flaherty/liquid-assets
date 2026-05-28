@@ -71,32 +71,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "asset-deflate"
-version = "0.1.0"
-dependencies = [
- "image",
- "strum 0.28.0",
- "strum_macros 0.28.0",
-]
-
-[[package]]
-name = "asset-inflate"
-version = "0.1.0"
-dependencies = [
- "asset-inflate-proc-macro",
-]
-
-[[package]]
-name = "asset-inflate-proc-macro"
-version = "0.1.0"
-dependencies = [
- "proc-macro-error",
- "proc-macro2",
- "quote",
- "syn 2.0.117",
-]
-
-[[package]]
 name = "autocfg"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -230,6 +204,32 @@ name = "byteorder-lite"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495"
+
+[[package]]
+name = "cashew-deflate"
+version = "0.1.0"
+dependencies = [
+ "image",
+ "strum 0.28.0",
+ "strum_macros 0.28.0",
+]
+
+[[package]]
+name = "cashew-inflate"
+version = "0.1.0"
+dependencies = [
+ "cashew-inflate-proc-macro",
+]
+
+[[package]]
+name = "cashew-inflate-proc-macro"
+version = "0.1.0"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
 
 [[package]]
 name = "cc"
@@ -846,8 +846,8 @@ dependencies = [
 name = "example"
 version = "0.1.0"
 dependencies = [
- "asset-deflate",
- "asset-inflate",
+ "cashew-deflate",
+ "cashew-inflate",
  "critical-section",
  "esp-alloc",
  "esp-bootloader-esp-idf",

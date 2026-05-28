@@ -72,7 +72,7 @@ pub fn include_assets(input: proc_macro::TokenStream) -> proc_macro::TokenStream
 
     quote! {
         pub mod assets {
-            use asset_inflate::Decompressor;
+            use cashew_inflate::Decompressor;
             #struct_definitions
             #(#struct_quotes)*
         }

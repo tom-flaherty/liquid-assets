@@ -1,3 +1,8 @@
+# Cashew
+
+Cashew is an assets pipeline for embedded rust. It allows easy conversion of
+source assets into compressed binaries.
+
 Rust compression libraries can be found here:
 
 https://crates.io/categories/compression
@@ -14,19 +19,14 @@ Or
 
 - Add postcard serialization so you can embed image width and height into the compressed data?
 - Add image width and height for all assets
-
 - Ensure all frames in an animation are the same size
-
 - Add MIPIDSI library to the c3 example
-
 - Flood docstrings everywhere, including the proc macro generated code
-
 - Add careful support for turning decompressed data into a embedded_graphics::Image.
 Maybe this should be a feature?
-
 - Give the repo a witty name
-
 - Add a licence like a true professional
+- Tart up the README
 
 # Long Term TODO
 

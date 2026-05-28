@@ -1,4 +1,4 @@
-use asset_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
+use cashew_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
 
 struct ZlibCompressor {}
 impl Compressor for ZlibCompressor {

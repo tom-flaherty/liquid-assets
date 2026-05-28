@@ -17,11 +17,11 @@ critical-section = "1.2.0"
 esp-alloc = "0.10.0"
 rtt-target = "0.6.2"
 
-asset-inflate = { path = "../asset-inflate" }
+cashew-inflate = { path = "../cashew-inflate" }
 miniz_oxide = "0.9.1"
 
 [build-dependencies]
-asset-deflate = { path = "../asset-deflate" }
+cashew-deflate = { path = "../cashew-deflate" }
 miniz_oxide = "0.9.1"
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html

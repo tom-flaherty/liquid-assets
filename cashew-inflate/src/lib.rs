@@ -1,6 +1,6 @@
 #![no_std]
 
-pub use asset_inflate_proc_macro::include_assets;
+pub use cashew_inflate_proc_macro::include_assets;
 
 pub trait Decompressor {
     type Error;
