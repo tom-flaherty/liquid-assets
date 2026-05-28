@@ -1,2 +1,3 @@
 [workspace]
 members = ["asset-compression", "asset-decompression"]
+resolver = "3"

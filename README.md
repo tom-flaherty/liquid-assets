@@ -26,6 +26,8 @@ Maybe this should be a feature?
 
 - Give the repo a witty name
 
+- Add a licence like a true professional
+
 # Long Term TODO
 
 - Support for displays other using colour formats other than RGB565
