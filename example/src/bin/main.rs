@@ -9,7 +9,6 @@
 
 use esp_hal::clock::CpuClock;
 use esp_hal::main;
-use esp_hal::time::{Duration, Instant};
 #[cfg(not(feature = "add_display"))]
 use example::run_benchmark;
 #[cfg(feature = "add_display")]

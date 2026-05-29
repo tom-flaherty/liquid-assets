@@ -99,7 +99,7 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
     // https://www.espboards.dev/esp32/esp32-c3-devkit-rust-1/
     // https://shop.pimoroni.com/products/adafruit-1-14-240x135-color-newxie-tft-display-st7789?variant=55022898872699
     // Wiring diagram:
-    // 
+    //
     //  Display   | C3 Devkit
     // -----------|---------------
     //  V+        | 3V3
@@ -146,11 +146,10 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         .with_mosi(peripherals.GPIO4)
         .with_sck(peripherals.GPIO0);
     let mut delay = Delay::new();
-    // Create a buffer 
-    let mut internal_buffer = [0_u8; 512]; // TODO how does this affect performance?
+    let mut internal_buffer = [0_u8; 135 * 240 * 2]; // TODO how does this affect performance?
     let spi_device = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(spi, cs).unwrap();
     let display_interface = SpiInterface::new(spi_device, dc, &mut internal_buffer);
-
+    // Initialise the display driver. Here we use mpipdsi for a ST7789 display
     let mut display = Builder::new(mipidsi::models::ST7789, display_interface)
         .display_size(135, 240)
         .display_offset(52, 40)
@@ -158,44 +157,43 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         .reset_pin(rst)
         .init(&mut delay)
         .unwrap();
-
     display.clear(Rgb565::BLACK).unwrap();
 
     let decompressor = ZlibDecompressor {};
-
     let mut frame_buffer = [0_u8; 135 * 240 * 2];
 
     let delay = Delay::new();
+    let mut last_frame_drawn = Instant::now();
+    let mut last_draw_duration = Duration::from_secs(0);
     loop {
         for (frame_number, frame) in assets::GITHUB.as_iter().enumerate() {
-            let frame_start = Instant::now();
+            rprint!("Frame: {} ", frame_number);
 
-            // Decompress the frame. It's now up to the user to 
+            let decompression_start = Instant::now();
             let data_size = frame.decompress(&mut frame_buffer, &decompressor).unwrap();
-
-            let decompression_time = frame_start.elapsed();
+            rprint!("Decompress time: {} ", decompression_start.elapsed());
 
             let image_raw =
                 embedded_graphics::image::ImageRaw::<Rgb565>::new(&frame_buffer[0..data_size], 135);
 
-            // Decompression takes an unpredictable amount of time, so it's recommended to delay between
-            // decompression and displaying
             delay.delay(
                 Duration::from_millis(50)
-                    .checked_sub(frame_start.elapsed())
+                    .checked_sub(last_frame_drawn.elapsed())
+                    .unwrap_or(Duration::from_millis(0))
+                    .checked_sub(last_draw_duration)
                     .unwrap_or(Duration::from_millis(0)),
             );
 
-            rprint!(
-                "Drawing frame {}: Frame time: {} Decompression time: {}",
-                frame_number,
-                frame_start.elapsed(),
-                decompression_time
+            let draw_start = Instant::now();
+            image_raw.draw(&mut display).unwrap(); // TODO shouldn't use this function directly
+            last_draw_duration = last_frame_drawn.elapsed();
+            rprintln!(
+                "Draw time: {} Frame time: {}",
+                draw_start.elapsed(),
+                last_draw_duration
             );
 
-            let draw_start = Instant::now();
-            image_raw.draw(&mut display).unwrap();
-            rprintln!(" Frame drawn in {}", draw_start.elapsed());
+            last_frame_drawn = Instant::now();
         }
     }
 }
