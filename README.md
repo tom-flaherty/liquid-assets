@@ -159,6 +159,7 @@ Libraries should be `no_std` and `no_alloc`.
 - Ensure all frames in an animation are the same size
 - Flood docstrings everywhere, including the proc macro generated code
 - Add a licence like a true professional
+- The delay code in the example is wonky
 - Improve the README
 
 # Long Term TODO
