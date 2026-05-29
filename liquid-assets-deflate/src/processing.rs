@@ -1,5 +1,6 @@
 use crate::Compressor;
 use image::{DynamicImage, EncodableLayout as _, ImageReader};
+use serde::{Deserialize, Serialize};
 use std::{
     fmt, fs,
     path::{Path, PathBuf},
@@ -30,6 +31,12 @@ enum ImageFileFormat {
     Tga,
     Tiff,
     Webp,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct JsonData {
+    image_width: u16,
+    image_height: u16,
 }
 
 pub struct AssetProcessor {
@@ -112,7 +119,7 @@ Took {:?}",
     }
 }
 
-// Private functions
+// Private functions for static asset processing
 impl AssetProcessor {
     fn process_static_asset<C: Compressor>(
         &mut self,
@@ -186,12 +193,29 @@ impl AssetProcessor {
 
         self.total_compressed_bytes += compressed_data.len() as u32;
 
-        let output_path =
+        let output_bin_path =
             PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("bin"));
 
-        fs::write(output_path, compressed_data.as_bytes()).unwrap();
+        fs::write(output_bin_path, compressed_data.as_bytes()).unwrap();
+
+        let output_json_path =
+            PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("json"));
+
+        let json_data = JsonData {
+            image_height: image.height() as u16,
+            image_width: image.width() as u16,
+        };
+        let json_data_string = serde_json::to_string_pretty(&json_data).unwrap();
+        let json_data_bytes = json_data_string.as_bytes();
+
+        fs::write(output_json_path, json_data_bytes).unwrap();
     }
 
+    fn generate_json() {todo!()}
+}
+
+// Private functions for animated asset processing
+impl AssetProcessor {
     fn process_animated_asset<C: crate::Compressor>(
         &mut self,
         animated_asset_path: &Path,
