@@ -130,7 +130,49 @@ impl AssetProcessor {
         <C as Compressor>::Error: fmt::Debug,
     {
         // Ensure the file extension is a valid image file
-        let file_name_lowercase = static_asset_path
+        let file_name_lowercase = self.get_static_asset_name_lowercase(static_asset_path);
+
+        match self.determine_image_file_format(&file_name_lowercase) {
+            Some(_image_file_format) => (),
+            None => {
+                println!("Skipping non-image file {}", file_name_lowercase);
+                return;
+            }
+        }
+        println!("Compressing static asset {}", file_name_lowercase);
+
+        // Ensure the asset name is snake case
+        let file_name_no_ext = Path::new(&file_name_lowercase)
+            .with_extension("")
+            .file_name()
+            .expect(format!("Failed to get file name for {}", file_name_lowercase).as_str())
+            .to_str()
+            .expect(format!("Failed to convert file name to str {}", file_name_lowercase).as_str())
+            .to_string();
+
+        if !is_snake_case(&file_name_no_ext) {
+            panic!(
+                "Asset name must be snake_case: {}",
+                file_name_lowercase
+            );
+        }
+
+        if !is_snake_case(&file_name_no_ext) {
+            panic!("Asset name must be snake_case: {}", file_name_lowercase);
+        }
+
+        let image = ImageReader::open(static_asset_path)
+            .expect(format!("Failed to open image {}", file_name_lowercase).as_str())
+            .decode()
+            .expect(format!("Failed to decode image {}", file_name_lowercase).as_str());
+
+        self.generate_static_asset_bin(output_dir, &file_name_lowercase, &image, compressor);
+
+        self.generate_static_asset_json(output_dir, &file_name_lowercase, &image);
+    }
+
+    fn get_static_asset_name_lowercase(&self, static_asset_path: &Path) -> String {
+        static_asset_path
             .file_name()
             .expect(
                 format!(
@@ -147,8 +189,10 @@ impl AssetProcessor {
                 )
                 .as_str(),
             )
-            .to_ascii_lowercase();
+            .to_ascii_lowercase()
+    }
 
+    fn determine_image_file_format(&self, file_name_lowercase: &String) -> Option<ImageFileFormat> {
         let file_format = Path::new(&file_name_lowercase)
             .extension()
             .expect(format!("Could not get extension for {}", file_name_lowercase).as_str())
@@ -162,34 +206,9 @@ impl AssetProcessor {
             );
 
         match file_format.parse::<ImageFileFormat>() {
-            Ok(_file_format) => println!("Compressing {}", file_name_lowercase),
-            Err(_e) => {
-                println!("Skipping non-image file {}", file_name_lowercase);
-                return;
-            }
+            Ok(file_format) => Some(file_format),
+            Err(_e) => None,
         }
-
-        // Ensure the asset name is snake case
-        let file_name_no_ext = Path::new(&file_name_lowercase)
-            .with_extension("")
-            .file_name()
-            .expect(format!("Failed to get file name for {}", file_name_lowercase).as_str())
-            .to_str()
-            .expect(format!("Failed to convert file name to str {}", file_name_lowercase).as_str())
-            .to_string();
-
-        if !is_snake_case(&file_name_no_ext) {
-            panic!("Asset name must be snake_case: {}", file_name_lowercase);
-        }
-
-        let image = ImageReader::open(static_asset_path)
-            .expect(format!("Failed to open image {}", file_name_lowercase).as_str())
-            .decode()
-            .expect(format!("Failed to decode image {}", file_name_lowercase).as_str());
-
-        self.generate_static_asset_bin(output_dir, &file_name_lowercase, &image, compressor);
-
-        self.generate_static_asset_json(output_dir, &file_name_lowercase, &image);
     }
 
     fn generate_static_asset_json(
