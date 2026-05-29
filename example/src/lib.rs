@@ -95,6 +95,21 @@ pub fn run_benchmark() -> ! {
 
 #[cfg(feature = "add_display")]
 pub fn run_display_loop(peripherals: Peripherals) -> ! {
+    // This example is for the following board and display:
+    // https://www.espboards.dev/esp32/esp32-c3-devkit-rust-1/
+    // https://shop.pimoroni.com/products/adafruit-1-14-240x135-color-newxie-tft-display-st7789?variant=55022898872699
+    // Wiring diagram:
+    // 
+    //  Display   | C3 Devkit
+    // -----------|---------------
+    //  V+        | 3V3
+    //  GND       | GND
+    //  CL        | IO0
+    //  DA        | IO4
+    //  CS        | IO5
+    //  DC        | IO1
+    //  BL        | Not Connected
+
     use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
     use esp_hal::{
         delay::Delay,
@@ -103,9 +118,11 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         time::Rate,
     };
     use mipidsi::{Builder, interface::SpiInterface};
+    use rtt_target::rprint;
 
     rprintln!("Setting up display");
 
+    // Setup SPI with esp-hal
     let cs = gpio::Output::new(
         peripherals.GPIO5,
         gpio::Level::Low,
@@ -121,7 +138,6 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         gpio::Level::Low,
         gpio::OutputConfig::default(),
     );
-
     let spi_config = master::Config::default()
         .with_mode(Mode::_0)
         .with_frequency(Rate::from_mhz(60));
@@ -130,7 +146,8 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         .with_mosi(peripherals.GPIO4)
         .with_sck(peripherals.GPIO0);
     let mut delay = Delay::new();
-    let mut internal_buffer = [0_u8; 512];
+    // Create a buffer 
+    let mut internal_buffer = [0_u8; 512]; // TODO how does this affect performance?
     let spi_device = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(spi, cs).unwrap();
     let display_interface = SpiInterface::new(spi_device, dc, &mut internal_buffer);
 
@@ -153,6 +170,7 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         for (frame_number, frame) in assets::GITHUB.as_iter().enumerate() {
             let frame_start = Instant::now();
 
+            // Decompress the frame. It's now up to the user to 
             let data_size = frame.decompress(&mut frame_buffer, &decompressor).unwrap();
 
             let decompression_time = frame_start.elapsed();
@@ -168,14 +186,16 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
                     .unwrap_or(Duration::from_millis(0)),
             );
 
-            rprintln!(
+            rprint!(
                 "Drawing frame {}: Frame time: {} Decompression time: {}",
                 frame_number,
                 frame_start.elapsed(),
                 decompression_time
             );
 
+            let draw_start = Instant::now();
             image_raw.draw(&mut display).unwrap();
+            rprintln!(" Frame drawn in {}", draw_start.elapsed());
         }
     }
 }
