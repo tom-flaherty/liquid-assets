@@ -19,7 +19,9 @@ rtt-target = "0.6.2"
 
 liquid-assets-inflate = { path = "../liquid-assets-inflate" }
 miniz_oxide = "0.9.1"
-embedded-hal = { version = "1.0.0", optional = true }
+mipidsi = { version = "0.10.0", optional = true }
+embedded-hal-bus = { version = "0.3.0", optional = true }
+embedded-graphics = { version = "0.8.2", optional = true }
 
 [build-dependencies]
 liquid-assets-deflate = { path = "../liquid-assets-deflate" }
@@ -41,4 +43,4 @@ opt-level = 's'
 
 [features]
 default = ["add_display"]
-add_display = ["embedded-hal"]
+add_display = ["mipidsi", "embedded-hal-bus", "embedded-graphics"]

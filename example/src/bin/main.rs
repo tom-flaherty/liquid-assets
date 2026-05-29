@@ -51,11 +51,5 @@ fn main() -> ! {
     #[cfg(feature = "add_display")]
     run_display_loop(peripherals);
 
-    loop {
-        rprintln!("End!");
-        let delay_start = Instant::now();
-        while delay_start.elapsed() < Duration::from_secs(60) {}
-    }
-
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.1.0/examples
 }

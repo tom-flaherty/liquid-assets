@@ -1,7 +1,7 @@
 #![no_std]
 
 #[cfg(feature = "add_display")]
-use esp_hal::time::Instant;
+use esp_hal::time::{Duration, Instant};
 #[cfg(feature = "add_display")]
 use esp_hal::{
     peripherals::{self, Peripherals},
@@ -9,9 +9,6 @@ use esp_hal::{
 };
 use liquid_assets_inflate::Decompressor;
 use rtt_target::rprintln;
-
-#[cfg(feature = "add_display")]
-mod ssd1327;
 
 const BUFFER_SIZE: usize = 128 * 128 * 2;
 
@@ -93,82 +90,92 @@ pub fn run_benchmark() -> ! {
         )
     }
 
-    // assets::LOADING.copy_compressed_frame_data_to_buffer();
-
-    // let _bytes_wrote = decompress_slice_iter_to_slice(
-    //     &mut frame_buffer,
-    //     core::iter::once(assets::ESPRESSIF.bytes),
-    //     false,
-    //     false,
-    // )
-    // .unwrap();
-
-    // for frame in assets::LOADING.as_iter() {
-    //     rprintln!("{:?}", frame[0]);
-    // }
-
-    // let duration = start_time.elapsed();
-
-    // rprintln!("Decompression took {:?}", duration);
+    loop {}
 }
 
 #[cfg(feature = "add_display")]
 pub fn run_display_loop(peripherals: Peripherals) -> ! {
-    use embedded_hal::spi::SpiBus;
+    use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
     use esp_hal::{
         delay::Delay,
         gpio,
         spi::{Mode, master},
         time::Rate,
     };
+    use mipidsi::{Builder, interface::SpiInterface};
 
     rprintln!("Setting up display");
 
     let cs = gpio::Output::new(
         peripherals.GPIO5,
-        gpio::Level::High,
+        gpio::Level::Low,
+        gpio::OutputConfig::default(),
+    );
+    let dc = gpio::Output::new(
+        peripherals.GPIO1,
+        gpio::Level::Low,
+        gpio::OutputConfig::default(),
+    );
+    let rst = gpio::Output::new(
+        peripherals.GPIO3,
+        gpio::Level::Low,
         gpio::OutputConfig::default(),
     );
 
     let spi_config = master::Config::default()
-        .with_mode(Mode::_3)
-        .with_frequency(Rate::from_mhz(1));
+        .with_mode(Mode::_0)
+        .with_frequency(Rate::from_mhz(60));
     let spi = master::Spi::new(peripherals.SPI2, spi_config)
         .unwrap()
-        .with_mosi(peripherals.GPIO2)
-        .with_sck(peripherals.GPIO4)
-        .with_cs(cs);
+        .with_mosi(peripherals.GPIO4)
+        .with_sck(peripherals.GPIO0);
+    let mut delay = Delay::new();
+    let mut internal_buffer = [0_u8; 512];
+    let spi_device = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    let display_interface = SpiInterface::new(spi_device, dc, &mut internal_buffer);
 
-    let dc = gpio::Output::new(
-        peripherals.GPIO6,
-        gpio::Level::Low,
-        gpio::OutputConfig::default(),
-    );
-    let _rst = gpio::Output::new(
-        peripherals.GPIO7,
-        gpio::Level::Low,
-        gpio::OutputConfig::default(),
-    );
+    let mut display = Builder::new(mipidsi::models::ST7789, display_interface)
+        .display_size(135, 240)
+        .display_offset(52, 40)
+        .invert_colors(mipidsi::options::ColorInversion::Inverted)
+        .reset_pin(rst)
+        .init(&mut delay)
+        .unwrap();
 
-    let mut display = ssd1327::Ssd1327::new(spi, dc);
-    display.init();
-    display.clear();
+    display.clear(Rgb565::BLACK).unwrap();
 
-    // let display = ssd1327::display::Ssd1327::new(spi_interface);
+    let decompressor = ZlibDecompressor {};
 
-    // // esp_hal::spi::master::
-    // let spi_device = ExclusiveDevice::new_no_delay(spi, cs).unwrap();
+    let mut frame_buffer = [0_u8; 135 * 240 * 2];
 
-    // let spi_interface = SpiInterface::new(spi_device, dc, &mut buffer);
+    let delay = Delay::new();
+    loop {
+        for (frame_number, frame) in assets::GITHUB.as_iter().enumerate() {
+            let frame_start = Instant::now();
 
-    // let mut buffer = [0_u8; 128 * 128 * 2];
+            let data_size = frame.decompress(&mut frame_buffer, &decompressor).unwrap();
 
-    // let delay = Delay::new();
+            let decompression_time = frame_start.elapsed();
 
-    // let mut display = Builder::new(mipidsi::models::, di)
-    //     .reset_pin(rst)
-    //     .init(&mut delay)
-    //     .unwrap();
+            let image_raw =
+                embedded_graphics::image::ImageRaw::<Rgb565>::new(&frame_buffer[0..data_size], 135);
 
-    loop {}
+            // Decompression takes an unpredictable amount of time, so it's recommended to delay between
+            // decompression and displaying
+            delay.delay(
+                Duration::from_millis(50)
+                    .checked_sub(frame_start.elapsed())
+                    .unwrap_or(Duration::from_millis(0)),
+            );
+
+            rprintln!(
+                "Drawing frame {}: Frame time: {} Decompression time: {}",
+                frame_number,
+                frame_start.elapsed(),
+                decompression_time
+            );
+
+            image_raw.draw(&mut display).unwrap();
+        }
+    }
 }
