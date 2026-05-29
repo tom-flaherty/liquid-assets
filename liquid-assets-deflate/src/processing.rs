@@ -187,17 +187,17 @@ impl AssetProcessor {
             .decode()
             .expect(format!("Failed to decode image {}", file_name_lowercase).as_str());
 
-        let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
+        self.generate_static_asset_bin(output_dir, &file_name_lowercase, &image, compressor);
 
-        let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
+        self.generate_static_asset_json(output_dir, &file_name_lowercase, &image);
+    }
 
-        self.total_compressed_bytes += compressed_data.len() as u32;
-
-        let output_bin_path =
-            PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("bin"));
-
-        fs::write(output_bin_path, compressed_data.as_bytes()).unwrap();
-
+    fn generate_static_asset_json(
+        &self,
+        output_dir: &Path,
+        file_name_lowercase: &String,
+        image: &DynamicImage,
+    ) {
         let output_json_path =
             PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("json"));
 
@@ -211,7 +211,26 @@ impl AssetProcessor {
         fs::write(output_json_path, json_data_bytes).unwrap();
     }
 
-    fn generate_json() {todo!()}
+    fn generate_static_asset_bin<C: Compressor>(
+        &mut self,
+        output_dir: &Path,
+        file_name_lowercase: &String,
+        image: &DynamicImage,
+        compressor: &C,
+    ) where
+        <C as Compressor>::Error: fmt::Debug,
+    {
+        let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
+
+        let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
+
+        self.total_compressed_bytes += compressed_data.len() as u32;
+
+        let output_bin_path =
+            PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("bin"));
+
+        fs::write(output_bin_path, compressed_data.as_bytes()).unwrap();
+    }
 }
 
 // Private functions for animated asset processing
