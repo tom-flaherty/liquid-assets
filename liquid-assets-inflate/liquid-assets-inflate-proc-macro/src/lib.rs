@@ -327,7 +327,7 @@ fn define_module_types() -> proc_macro2::TokenStream {
                 if self.current_frame < self.frames.len() {
                     let data = self.frames[self.current_frame];
                     self.current_frame += 1;
-                    Some(StaticAsset { 
+                    Some(StaticAsset {
                         data,
                         width: self.width,
                         height: self.height,
