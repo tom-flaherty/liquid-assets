@@ -335,8 +335,6 @@ impl AssetProcessor {
                 &animation_name_lowercase,
             );
 
-            // You were here
-
             let image = ImageReader::open(frame.path())
                 .expect(format!("Failed to open image {}", animation_name_lowercase).as_str())
                 .decode()
@@ -357,30 +355,7 @@ impl AssetProcessor {
             fs::write(frame_output_path, compressed_data.as_bytes()).unwrap();
         }
 
-        if processed_frame_numbers.is_empty() {
-            println!(
-                "Warning: Found animation with no frames: `{}`",
-                animated_asset_path.to_str().unwrap_or("unknown")
-            );
-            return;
-        }
-
-        processed_frame_numbers.sort();
-
-        if processed_frame_numbers[0] == 0 {
-            panic!("Frames should be numbered starting with 1, not 0");
-        }
-
-        // Ensure one of each frame exists
-        for (index, frame_number) in processed_frame_numbers.iter().enumerate() {
-            if *frame_number != (index as u32) + 1 {
-                panic!(
-                    "Missing frame {} in animation, path: {}",
-                    (index as u32) + 1,
-                    animated_asset_path.to_str().unwrap()
-                );
-            }
-        }
+        self.validate_frame_numbers(&mut processed_frame_numbers, &animation_name_lowercase);
     }
 
     fn get_animated_asset_name_lowercase(&self, animated_asset_path: &Path) -> String {
@@ -462,9 +437,7 @@ impl AssetProcessor {
                 if image_file_format != frame_image_file_format {
                     panic!(
                         "Animation `{}` contains both {} and {} image file formats (all frames should have the same file format)",
-                        animation_name,
-                        image_file_format,
-                        frame_image_file_format,
+                        animation_name, image_file_format, frame_image_file_format,
                     )
                 };
             }
@@ -473,6 +446,38 @@ impl AssetProcessor {
                     // This is the first animation frame found, so set the variable
                     Some(frame_image_file_format.clone())
                 };
+            }
+        }
+    }
+
+    fn validate_frame_numbers(
+        &self,
+        processed_frame_numbers: &mut Vec<u32>,
+        animation_name: &String,
+    ) {
+        if processed_frame_numbers.is_empty() {
+            println!(
+                "Warning: Found animation with no frames: `{}`",
+                animation_name
+            );
+            return;
+        }
+
+        processed_frame_numbers.sort();
+
+        if processed_frame_numbers[0] == 0 {
+            panic!("Frames should be numbered starting with 1, not 0");
+        }
+
+        // Ensure one of each frame exists
+        for (index, frame_number) in processed_frame_numbers.iter().enumerate() {
+            if *frame_number != (index as u32) + 1 {
+                // TODO this panic message is useful for missing frames but misleading for duplicates
+                panic!(
+                    "Missing frame {} in animation, path: {}",
+                    (index as u32) + 1,
+                    animation_name
+                );
             }
         }
     }
