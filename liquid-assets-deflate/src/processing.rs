@@ -222,8 +222,8 @@ impl AssetProcessor {
             PathBuf::from(output_dir).join(Path::new(&file_name_lowercase).with_extension("json"));
 
         let json_data = JsonData {
-            image_height: image.height() as u16,
             image_width: image.width() as u16,
+            image_height: image.height() as u16,
         };
         let json_data_string = serde_json::to_string_pretty(&json_data).unwrap();
         let json_data_bytes = json_data_string.as_bytes();
@@ -280,6 +280,9 @@ impl AssetProcessor {
 
         // Used to ensure all images have the same file format
         let mut animation_image_file_format: Option<ImageFileFormat> = None;
+
+        // Used to ensure all frames have the same dimensions
+        let mut animation_size: Option<(u16, u16)> = None;
 
         // Frame numbers will be added to this vec in a non-deterministic order
         let mut processed_frame_numbers: Vec<u32> = Vec::new();
@@ -340,6 +343,12 @@ impl AssetProcessor {
                 .decode()
                 .expect(format!("Failed to decode image {}", animation_name_lowercase).as_str());
 
+            self.check_inconsistent_frame_sizes(
+                &image,
+                &mut animation_size,
+                &animation_name_lowercase,
+            );
+
             let uncompressed_data = convert_image_to_bytes(&image, &self.target_color_format);
 
             let compressed_data = compressor.compress(&uncompressed_data.as_bytes()).unwrap();
@@ -353,6 +362,20 @@ impl AssetProcessor {
                 animated_output_dir.join(Path::new(&format!("FRAME{}.bin", frame_number)));
 
             fs::write(frame_output_path, compressed_data.as_bytes()).unwrap();
+        }
+
+        if let Some((frame_width, frame_height)) = animation_size {
+            self.generate_animation_json(
+                output_dir,
+                &animation_name_lowercase,
+                frame_width,
+                frame_height,
+            );
+        } else {
+            println!(
+                "Warning: Couldn't determine frame size for animation: {}",
+                animation_name_lowercase
+            );
         }
 
         self.validate_frame_numbers(&mut processed_frame_numbers, &animation_name_lowercase);
@@ -448,6 +471,47 @@ impl AssetProcessor {
                 };
             }
         }
+    }
+
+    fn check_inconsistent_frame_sizes(
+        &self,
+        image: &DynamicImage,
+        animation_size: &mut Option<(u16, u16)>,
+        animation_name: &String,
+    ) {
+        match animation_size {
+            Some((animation_width, animation_height)) => {
+                if image.width() as u16 != *animation_width
+                    || image.height() as u16 != *animation_height
+                {
+                    panic!(
+                        "Animation `{}` has frames with inconsistent sizes",
+                        animation_name
+                    );
+                }
+            }
+            None => *animation_size = Some((image.width() as u16, image.height() as u16)),
+        }
+    }
+
+    fn generate_animation_json(
+        &self,
+        output_dir: &Path,
+        animation_name: &String,
+        frame_width: u16,
+        frame_height: u16,
+    ) {
+        let output_json_path =
+            PathBuf::from(output_dir).join(Path::new(&animation_name).with_extension("json"));
+
+        let json_data = JsonData {
+            image_width: frame_width,
+            image_height: frame_height,
+        };
+        let json_data_string = serde_json::to_string_pretty(&json_data).unwrap();
+        let json_data_bytes = json_data_string.as_bytes();
+
+        fs::write(output_json_path, json_data_bytes).unwrap();
     }
 
     fn validate_frame_numbers(

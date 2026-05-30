@@ -164,6 +164,8 @@ Libraries should be `no_std` and `no_alloc`.
 
 # Long Term TODO
 
+- The compression code could be refactored to use more structs, which may improve readablility
+- Remove "... as u16" from compression code
 - Support for displays other using colour formats other than RGB565
 - Support for transparency
 - Add a way to build assets without adding to build.rs
@@ -176,6 +178,6 @@ You can convert a gif to frames using:
 
 `ffmpeg -i mygif.gif frame_%04d.png`
 
-Or
+Or to also resize:
 
-`ffmpeg -i mygif.gif -start_number 1 -vf scale=128:128 frame_%04d.png`
+`ffmpeg -i mygif.gif -vf scale=128:128 frame_%04d.png`
