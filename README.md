@@ -153,7 +153,6 @@ Libraries should be `no_std` and `no_alloc`.
 
 # TODO
 
-- Add width and height for all assets
 - decompression function should return tuple with (slice of buffer for image data, width, height). Or maybe this should be a struct?
 - Add at least one other example of a compression/decompression library implementation
 - Ensure all frames in an animation are the same size

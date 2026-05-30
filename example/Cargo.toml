@@ -42,5 +42,5 @@ opt-level = 's'
 [workspace]
 
 [features]
-default = ["add_display"]
-add_display = ["mipidsi", "embedded-hal-bus", "embedded-graphics"]
+default = []
+display = ["mipidsi", "embedded-hal-bus", "embedded-graphics"]

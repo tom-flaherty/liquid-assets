@@ -229,7 +229,14 @@ fn define_module_types() -> proc_macro2::TokenStream {
         #[derive(Debug)]
         pub enum Error<DecompressionError> {
             Decompression(DecompressionError),
+            UnexpectedSize,
             FrameOutOfRange,
+        }
+
+        pub struct DecompressedData {
+            pub bytes_wrote: usize,
+            pub width: u16,
+            pub height: u16,
         }
 
         pub struct StaticAsset {
@@ -245,10 +252,20 @@ fn define_module_types() -> proc_macro2::TokenStream {
                 &self,
                 buffer: &mut [u8; N],
                 decompressor: &D,
-            ) -> Result<usize, Error<<D as Decompressor>::Error>> {
-                decompressor
+            ) -> Result<DecompressedData, Error<<D as Decompressor>::Error>> {
+                let bytes_wrote = decompressor
                     .decompress(buffer, self.data)
-                    .map_err(|e| Error::Decompression(e))
+                    .map_err(|e| Error::Decompression(e))?;
+                // TODO this is only valid for RGB565
+                const BYTES_PER_PIXEL: usize = 2;
+                if bytes_wrote != (self.width as usize) * (self.height as usize) * BYTES_PER_PIXEL {
+                    return Err(Error::UnexpectedSize);
+                }
+                Ok(DecompressedData {
+                    bytes_wrote,
+                    width: self.width,
+                    height: self.height,
+                })
             }
         }
 

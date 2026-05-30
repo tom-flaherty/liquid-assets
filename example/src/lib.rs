@@ -1,12 +1,12 @@
 #![no_std]
 
-#[cfg(feature = "add_display")]
-use esp_hal::time::{Duration, Instant};
-#[cfg(feature = "add_display")]
-use esp_hal::{
-    peripherals::{self, Peripherals},
-    time::Rate,
-};
+#[cfg(feature = "display")]
+use assets::DecompressedData;
+#[cfg(feature = "display")]
+use esp_hal::peripherals::Peripherals;
+#[cfg(feature = "display")]
+use esp_hal::time::Duration;
+use esp_hal::time::Instant;
 use liquid_assets_inflate::Decompressor;
 use rtt_target::rprintln;
 
@@ -33,7 +33,7 @@ impl Decompressor for ZlibDecompressor {
 liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
 // liquid_assets_inflate::include_assets!("asset-binaries", 32768);
 
-#[cfg(not(feature = "add_display"))]
+#[cfg(not(feature = "display"))]
 pub fn run_benchmark() -> ! {
     let mut buffer = [0_u8; BUFFER_SIZE];
 
@@ -93,7 +93,7 @@ pub fn run_benchmark() -> ! {
     loop {}
 }
 
-#[cfg(feature = "add_display")]
+#[cfg(feature = "display")]
 pub fn run_display_loop(peripherals: Peripherals) -> ! {
     // This example is for the following board and display:
     // https://www.espboards.dev/esp32/esp32-c3-devkit-rust-1/
@@ -170,11 +170,17 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
             rprint!("Frame: {} ", frame_number);
 
             let decompression_start = Instant::now();
-            let data_size = frame.decompress(&mut frame_buffer, &decompressor).unwrap();
+
+            let DecompressedData {
+                bytes_wrote, width, ..
+            } = frame.decompress(&mut frame_buffer, &decompressor).unwrap();
+
             rprint!("Decompress time: {} ", decompression_start.elapsed());
 
-            let image_raw =
-                embedded_graphics::image::ImageRaw::<Rgb565>::new(&frame_buffer[0..data_size], 135);
+            let image_raw = embedded_graphics::image::ImageRaw::<Rgb565>::new(
+                &frame_buffer[0..bytes_wrote],
+                width as u32,
+            );
 
             delay.delay(
                 Duration::from_millis(50)

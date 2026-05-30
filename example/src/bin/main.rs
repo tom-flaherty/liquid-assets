@@ -9,9 +9,9 @@
 
 use esp_hal::clock::CpuClock;
 use esp_hal::main;
-#[cfg(not(feature = "add_display"))]
+#[cfg(not(feature = "display"))]
 use example::run_benchmark;
-#[cfg(feature = "add_display")]
+#[cfg(feature = "display")]
 use example::run_display_loop;
 use rtt_target::rprintln;
 
@@ -44,10 +44,10 @@ fn main() -> ! {
 
     esp_alloc::heap_allocator!(#[esp_hal::ram(reclaimed)] size: 66320);
 
-    #[cfg(not(feature = "add_display"))]
+    #[cfg(not(feature = "display"))]
     run_benchmark();
 
-    #[cfg(feature = "add_display")]
+    #[cfg(feature = "display")]
     run_display_loop(peripherals);
 
     // for inspiration have a look at the examples at https://github.com/esp-rs/esp-hal/tree/esp-hal-v1.1.0/examples
