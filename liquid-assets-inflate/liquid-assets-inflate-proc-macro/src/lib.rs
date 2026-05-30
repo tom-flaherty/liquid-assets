@@ -1,6 +1,8 @@
 use proc_macro_error::{abort_call_site, proc_macro_error};
 use quote::quote;
+use serde::Deserialize;
 use std::{
+    ffi::OsStr,
     fs::{self, DirEntry},
     path::{Path, PathBuf},
 };
@@ -9,6 +11,12 @@ use syn::{Expr, LitInt, LitStr, Token, parse::Parse};
 enum BufferSizeParam {
     Expr(Expr),
     LitInt(usize),
+}
+
+#[derive(Deserialize, Debug)]
+struct JsonData {
+    image_width: u16,
+    image_height: u16,
 }
 
 struct MacroArgs {
@@ -64,7 +72,9 @@ pub fn include_assets(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         if file_type.is_dir() {
             struct_quotes.push(process_animated_asset(item, &buffer_size));
         } else if file_type.is_file() {
-            struct_quotes.push(process_static_asset(item));
+            if item.path().extension().unwrap_or(OsStr::new("")) == "bin" {
+                struct_quotes.push(process_static_asset(item));
+            }
         }
     }
 
@@ -89,9 +99,24 @@ fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
     }
     .to_owned();
 
+    // Load metadata from json
+    let json_data =
+        fs::read(asset.path().with_extension("json")).expect("Could not find json file for `{}`");
+    let json_data: JsonData = serde_json::from_slice(json_data.as_slice()).expect(
+        format!(
+            "Failed to parse json file for static asset `{}`",
+            asset_name
+        )
+        .as_str(),
+    );
+    let width = json_data.image_width;
+    let height = json_data.image_height;
+
     quote! {
         pub const #asset_name: StaticAsset = StaticAsset {
             data: include_bytes!(#path_to_bin).as_slice(),
+            width: #width,
+            height: #height,
         };
     }
 }
@@ -111,6 +136,19 @@ fn process_animated_asset(
         ),
     }
     .count();
+
+    // Load metadata from json
+    let json_data =
+        fs::read(asset.path().with_extension("json")).expect("Could not find json file for `{}`");
+    let json_data: JsonData = serde_json::from_slice(json_data.as_slice()).expect(
+        format!(
+            "Failed to parse json file for static asset `{}`",
+            asset_name
+        )
+        .as_str(),
+    );
+    let width = json_data.image_width;
+    let height = json_data.image_height;
 
     // Data for each frame is added with include bytes
     let mut frame_data: Vec<proc_macro2::TokenStream> = Vec::new();
@@ -153,6 +191,8 @@ fn process_animated_asset(
             frames: &[
                 #(#frame_data)*
             ],
+            width: #width,
+            height: #height,
         };
     }
 }
@@ -194,6 +234,8 @@ fn define_module_types() -> proc_macro2::TokenStream {
 
         pub struct StaticAsset {
             data: &'static [u8],
+            width: u16,
+            height: u16,
         }
         impl StaticAsset {
             pub fn get_comressed_data(&self) -> &'static [u8] {
@@ -212,6 +254,8 @@ fn define_module_types() -> proc_macro2::TokenStream {
 
         pub struct AnimatedAsset<const N: usize> {
             frames: &'static [&'static [u8]],
+            width: u16,
+            height: u16,
         }
         impl<const N: usize> AnimatedAsset<N> {
             pub const fn get_number_of_frames(&self) -> usize {
@@ -256,18 +300,22 @@ fn define_module_types() -> proc_macro2::TokenStream {
                 }
             }
             pub fn as_iter(&self) -> FrameIterator {
-                FrameIterator::new(self.frames)
+                FrameIterator::new(self.frames, self.width, self.height)
             }
         }
 
         pub struct FrameIterator {
             frames: &'static [&'static [u8]],
+            width: u16,
+            height: u16,
             current_frame: usize,
         }
         impl FrameIterator {
-            pub fn new(frames: &'static [&'static [u8]]) -> Self {
+            pub fn new(frames: &'static [&'static [u8]], width: u16, height: u16) -> Self {
                 Self {
                     frames,
+                    width,
+                    height,
                     current_frame: 0,
                 }
             }
@@ -279,7 +327,11 @@ fn define_module_types() -> proc_macro2::TokenStream {
                 if self.current_frame < self.frames.len() {
                     let data = self.frames[self.current_frame];
                     self.current_frame += 1;
-                    Some(StaticAsset { data })
+                    Some(StaticAsset { 
+                        data,
+                        width: self.width,
+                        height: self.height,
+                    })
                 } else {
                     None
                 }

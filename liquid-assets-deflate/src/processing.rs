@@ -1,6 +1,6 @@
 use crate::Compressor;
 use image::{DynamicImage, EncodableLayout as _, ImageReader};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     fmt,
     fs::{self, DirEntry},
@@ -34,7 +34,7 @@ enum ImageFileFormat {
     Webp,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Debug)]
 struct JsonData {
     image_width: u16,
     image_height: u16,
