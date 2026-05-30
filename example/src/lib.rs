@@ -12,8 +12,8 @@ use rtt_target::rprintln;
 
 const BUFFER_SIZE: usize = 128 * 128 * 2;
 
-struct ZlibDecompressor {}
-impl Decompressor for ZlibDecompressor {
+struct MinizOxideDecompressor {}
+impl Decompressor for MinizOxideDecompressor {
     type Error = miniz_oxide::inflate::TINFLStatus;
 
     fn decompress<const N: usize>(
@@ -30,6 +30,49 @@ impl Decompressor for ZlibDecompressor {
     }
 }
 
+// struct BrotliDecompressor {}
+// impl Decompressor for BrotliDecompressor {
+//     type Error;
+
+//     fn decompress<const N: usize>(
+//         &self,
+//         buffer: &mut [u8; N],
+//         compressed_data: &[u8],
+//     ) -> Result<usize, Self::Error> {
+//     }
+// }
+
+// struct BrotlicDecompressor {}
+// impl Decompressor for BrotlicDecompressor {
+//     type Error = ();
+
+//     fn decompress<const N: usize>(
+//         &self,
+//         buffer: &mut [u8; N],
+//         compressed_data: &[u8],
+//     ) -> Result<usize, Self::Error> {
+//         let mut decompressor = brotlic::DecompressorReader::new(compressed_data);
+//         let mut decoded_output: heapless::Vec<u8, N> = heapless::Vec::new();
+//         // decompressor.read_to_end();
+
+//         Err(())
+//     }
+// }
+
+struct Lz4FlexDecompressor {}
+impl Decompressor for Lz4FlexDecompressor {
+    type Error = ();
+
+    fn decompress<const N: usize>(
+        &self,
+        buffer: &mut [u8; N],
+        compressed_data: &[u8],
+    ) -> Result<usize, Self::Error> {
+        lz4_flex::decompress_size_prepended(compressed_data);
+        Err(())
+    }
+}
+
 liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
 // liquid_assets_inflate::include_assets!("asset-binaries", 32768);
 
@@ -39,7 +82,7 @@ pub fn run_benchmark() -> ! {
 
     let start_time = Instant::now();
 
-    let decompressor = ZlibDecompressor {};
+    let decompressor = MinizOxideDecompressor {};
 
     // Decompress a single static asset
     assets::ESPRESSIF
@@ -140,13 +183,13 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
     );
     let spi_config = master::Config::default()
         .with_mode(Mode::_0)
-        .with_frequency(Rate::from_mhz(60));
+        .with_frequency(Rate::from_mhz(65));
     let spi = master::Spi::new(peripherals.SPI2, spi_config)
         .unwrap()
         .with_mosi(peripherals.GPIO4)
         .with_sck(peripherals.GPIO0);
     let mut delay = Delay::new();
-    let mut internal_buffer = [0_u8; 135 * 240 * 2]; // TODO how does this affect performance?
+    let mut internal_buffer = [0_u8; 512];
     let spi_device = embedded_hal_bus::spi::ExclusiveDevice::new_no_delay(spi, cs).unwrap();
     let display_interface = SpiInterface::new(spi_device, dc, &mut internal_buffer);
     // Initialise the display driver. Here we use mpipdsi for a ST7789 display
@@ -159,7 +202,7 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
 
-    let decompressor = ZlibDecompressor {};
+    let decompressor = MinizOxideDecompressor {};
     let mut frame_buffer = [0_u8; 135 * 240 * 2];
 
     let delay = Delay::new();
@@ -181,6 +224,7 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
                 &frame_buffer[0..bytes_wrote],
                 width as u32,
             );
+            let image = embedded_graphics::image::Image::new(&image_raw, Point { x: 0, y: 0 });
 
             delay.delay(
                 Duration::from_millis(50)
@@ -191,7 +235,7 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
             );
 
             let draw_start = Instant::now();
-            image_raw.draw(&mut display).unwrap(); // TODO shouldn't use this function directly
+            image.draw(&mut display).unwrap(); // TODO shouldn't use this function directly
             last_draw_duration = last_frame_drawn.elapsed();
             rprintln!(
                 "Draw time: {} Frame time: {}",

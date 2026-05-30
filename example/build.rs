@@ -1,7 +1,10 @@
+use std::io::Write;
+
 use liquid_assets_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
 
-struct ZlibCompressor {}
-impl Compressor for ZlibCompressor {
+#[allow(unused)]
+struct MinizOxideCompressor {}
+impl Compressor for MinizOxideCompressor {
     // The compression is infallible
     type Error = ();
 
@@ -14,14 +17,38 @@ impl Compressor for ZlibCompressor {
     }
 }
 
+#[allow(unused)]
+struct BrotlicCompressor {}
+impl Compressor for BrotlicCompressor {
+    type Error = ();
+
+    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        let mut compressor = brotlic::CompressorWriter::new(Vec::new());
+        compressor.write_all(input_bytes).map_err(|_| ())?;
+        Ok(compressor.into_inner().unwrap())
+    }
+}
+
+#[allow(unused)]
+struct Lz4FlexCompressor {}
+impl Compressor for Lz4FlexCompressor {
+    type Error = ();
+
+    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        Ok(lz4_flex::compress_prepend_size(input_bytes))
+    }
+}
+
 fn main() {
-    let zlib_compressor = ZlibCompressor {};
+    // let compressor = MinizOxideCompressor {};
+    // let compressor = BrotlicCompressor {};
+    let compressor = Lz4FlexCompressor {};
 
     rebuild_assets_if_changed(
         "./assets",
         "./asset-binaries",
         TargetColorFormat::Rgb565,
-        &zlib_compressor,
+        &compressor,
     );
 
     linker_be_nice();
