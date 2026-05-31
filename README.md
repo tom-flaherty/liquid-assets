@@ -117,11 +117,6 @@ assets
 
 To use `liquid-assets`, first add `liquid-assets-deflate` to the `[dev-dependencies]` of your Cargo.toml.
 
-# TODO
-
-- Flood docstrings everywhere, including the proc macro generated code
-- Add a licence like a true professional
-
 # Long Term TODO
 
 - The compression code could be refactored to use more structs, which may improve readablility
