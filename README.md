@@ -128,6 +128,14 @@ To use `liquid-assets`, first add `liquid-assets-deflate` to the `[dev-dependenc
 - Prevent unwanted rebuilds
 - Only rebuild the specific assets that changed (this would add a lot of complexity)
 
+## Licence
+
+This software is provided under the MIT Licence (see LICENCE file). If you find this project helpful, please give the repo a star.
+
+## Contributing
+
+Please raise an issue on github to discuss changes.
+
 ## Other notes
 
 Only tested on Linux.
