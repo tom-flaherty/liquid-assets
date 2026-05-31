@@ -16,7 +16,7 @@ pub trait Compressor {
     fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
-pub fn rebuild_assets_if_changed<C: Compressor>(
+pub fn build_assets<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
     target_color_format: TargetColorFormat,

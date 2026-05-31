@@ -1,6 +1,5 @@
 #![no_std]
 
-#[cfg(feature = "display")]
 use assets::DecompressedData;
 #[cfg(feature = "display")]
 use esp_hal::peripherals::Peripherals;
@@ -12,7 +11,8 @@ use rtt_target::rprintln;
 mod decompressors;
 use decompressors::*;
 
-const BUFFER_SIZE: usize = 128 * 128 * 2;
+// Size of the buffer which image data will be decompressed into
+const BUFFER_SIZE: usize = 135 * 135 * 2;
 
 liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
 // liquid_assets_inflate::include_assets!("asset-binaries", 32768);
@@ -21,14 +21,23 @@ liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
 pub fn run_benchmark() -> ! {
     let mut buffer = [0_u8; BUFFER_SIZE];
 
-    let start_time = Instant::now();
+    // Create a decompressor - make sure it matches the compressor used in build.rs!
 
     let decompressor = MinizOxideDecompressor {};
+    // let decompressor = LzssDecompressor::new();
+    // let decompressor = NoDecompressor{};
+
+    let start_time = Instant::now();
 
     // Decompress a single static asset
-    assets::ESPRESSIF
+    let DecompressedData {
+        bytes_wrote: _,
+        width: _,
+        height: _,
+    } = assets::ESPRESSIF
         .decompress(&mut buffer, &decompressor)
         .unwrap();
+    // Now you can access the decompressed data as a slice with buffer[..bytes_wrote]
 
     rprintln!("Decompression took {:?}", start_time.elapsed());
 
@@ -36,7 +45,7 @@ pub fn run_benchmark() -> ! {
     let loading_frames = assets::LOADING.get_number_of_frames();
     rprintln!("The loading animation contains {} frames", loading_frames);
 
-    // Decompress a single frame by passing a reference to the decompressor
+    // Decompress a single frame
     let start_time = Instant::now();
     let frame_number = 3;
     let bytes_written = assets::LOADING
@@ -48,20 +57,6 @@ pub fn run_benchmark() -> ! {
         bytes_written,
         start_time.elapsed()
     );
-
-    // Decompress a single frame by getting the raw data and decompressing using
-    // the library directly
-    let frame_number = 5;
-    let data = assets::LOADING
-        .get_compressed_frame_data(frame_number)
-        .unwrap();
-    miniz_oxide::inflate::decompress_slice_iter_to_slice(
-        &mut buffer,
-        core::iter::once(data),
-        false,
-        false,
-    )
-    .unwrap();
 
     // Decompress all frames in an animation using the frame iterator
     for (frame_index, frame) in assets::GITHUB.as_iter().enumerate() {
@@ -143,26 +138,31 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
 
-    // let decompressor = MinizOxideDecompressor {};
-    let decompressor = NoDecompressor {};
+    // Create a decompressor - make sure it matches the compressor used in build.rs!
+
+    let decompressor = MinizOxideDecompressor {};
     // let decompressor = LzssDecompressor {};
+    // let decompressor = NoDecompressor {};
 
     let mut frame_buffer = [0_u8; 135 * 240 * 2];
 
     let delay = Delay::new();
-    let mut last_frame_drawn = Instant::now();
-    let mut last_draw_duration = Duration::from_secs(0);
+    // 50ms per frame (20 fps)
+    let desired_frame_time = Duration::from_millis(50);
+    // Loop through the animation indefinitely
     loop {
         for (frame_number, frame) in assets::GITHUB.as_iter().enumerate() {
-            rprint!("Frame: {} ", frame_number);
+            let frame_start_time = Instant::now();
+            rprint!("Frame no. {} ", frame_number);
 
-            let decompression_start = Instant::now();
-
+            let decompression_start_time = Instant::now();
             let DecompressedData {
                 bytes_wrote, width, ..
             } = frame.decompress(&mut frame_buffer, &decompressor).unwrap();
+            rprint!("Decomp. in {} ", decompression_start_time.elapsed());
 
-            rprint!("Decompress time: {} ", decompression_start.elapsed());
+            // Now it's up to the user to display the decompressed data
+            // The mipidsi driver used in this example is compatible with embedded_graphics::Image
 
             let image_raw = embedded_graphics::image::ImageRaw::<Rgb565>::new(
                 &frame_buffer[0..bytes_wrote],
@@ -170,24 +170,18 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
             );
             let image = embedded_graphics::image::Image::new(&image_raw, Point { x: 0, y: 0 });
 
+            let draw_start = Instant::now();
+            image.draw(&mut display).unwrap();
+            rprint!("Draw time {} ", draw_start.elapsed(),);
+
+            // Delay to maintain framerate. Note that decompression time may vary per frame
             delay.delay(
-                Duration::from_millis(50)
-                    .checked_sub(last_frame_drawn.elapsed())
-                    .unwrap_or(Duration::from_millis(0))
-                    .checked_sub(last_draw_duration)
+                desired_frame_time
+                    .checked_sub(frame_start_time.elapsed())
                     .unwrap_or(Duration::from_millis(0)),
             );
 
-            let draw_start = Instant::now();
-            image.draw(&mut display).unwrap(); // TODO shouldn't use this function directly
-            last_draw_duration = last_frame_drawn.elapsed();
-            rprintln!(
-                "Draw time: {} Frame time: {}",
-                draw_start.elapsed(),
-                last_draw_duration
-            );
-
-            last_frame_drawn = Instant::now();
+            rprintln!("Frame Time {}", frame_start_time.elapsed());
         }
     }
 }

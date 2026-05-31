@@ -2,28 +2,105 @@
 
 `liquid-assets` is an assets pipeline for embedded Rust. It has two parts:
 
-- `liquid-assets-deflate` is used to compress source images into binaries. It uses `std` as it doesn't run on the embedded hardware.
-- `liquid-assets-inflate` is used to decompress those binaries into images. It uses `no_std`.
+- `liquid-assets-deflate` is used to compress source images into binaries.
+- `liquid-assets-inflate` provides a macro which loads these images and provides easy methods for decompressing them.
 
-Any `no_std` compatible compression library can be used.
+## What problem does it solve?
 
-## Example
+In my experience, to display animation frames on embedded Rust hardware I write a python script which converts each frame to a .bin file, and then I manually include each frame with the `include_bytes!` macro.
 
-This is a typical embedded Rust project structure:
-
-```
-.
-├── assets
-├── build.rs
-├── Cargo.toml
-├── rust-toolchain.toml
-└── src
-    ├── bin
-    │   └── main.rs
-    └── lib.rs
+```rust
+const ANIMATION_DATA = [
+    include_bytes!("path/frame1.bin"),
+    include_bytes!("path/frame2.bin"),
+    ... // Rinse and repeat many times
+];
 ```
 
-In the assets directory, there is an image called `espressif.png` (referred to as a static asset), and two animations - one called `github` and one called `loading` (referred to as animated assets). Each animation folder contains the frames to display that animation, with a number suffixed to the name. Non-image files can be added (perhaps notes about this animation), and they will be ignored
+This isn't great because if you need to change the animations you have to rewrite this. Not to mention that there may be hundreds of frames in an animation.
+
+`liquid_assets` provides a pipeline which automates the compression and decompression of these assets.
+
+`liquid_assets_deflate` provides the `build_assets` function which can be placed in `build.rs`, and will compress assets into .bin files. The user has to implement the `Compressor` trait, to implement a compression library. Some example implementations of this trait are included in /example/build.rs.
+
+## Quick Example
+
+```rust
+// build.rs
+struct MinizOxideCompressor {}
+impl Compressor for MinizOxideCompressor {
+    // The compression is infallible
+    type Error = ();
+
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        const COMPRESSION_LEVEL: u8 = 5;
+        Ok(miniz_oxide::deflate::compress_to_vec(
+            input_bytes,
+            COMPRESSION_LEVEL,
+        ))
+    }
+}
+fn main() {
+    let mut compressor = MinizOxideCompressor {};
+    build_assets(
+        "./assets", // Source directory for assets
+        "./asset-binaries", // Target directory for binaries
+        TargetColorFormat::Rgb565, // Images will be converted to this colour format
+        &mut compressor, // Pass a reference to the compressor
+    );
+    ... // Rest of build.rs
+```
+
+This will rebuild the assets whenever the assets source directory changes, or if the user runs `REBUILD_ASSETS=1 cargo build`.
+
+Next, to load these animations in the embedded Rust code, simply call the `include_assets!` macro.
+
+```rust
+use liquid_assets_inflate::include_assets;
+const BUFFER_SIZE: usize = 135 * 135 * 2;
+include_assets!("asset-binaries", BUFFER_SIZE);
+
+fn main() {
+    ... // Embedded setup here
+
+    // Decompress a static asset
+    let DecompressedData {
+        bytes_wrote,
+        width,
+        height,
+    } = assets::ESPRESSIF
+        .decompress(&mut buffer, &decompressor)
+        .unwrap();
+    // You can now access the image as a slice of the buffer
+    let data = buffer[..bytes_wrote];
+    // It's up to the user to convert this into something that the display driver can use
+
+    // You can also decompress animations as an iterator
+    for (frame_index, frame) in assets::GITHUB.as_iter().enumerate() {
+        let DecompressedData {
+            bytes_wrote,
+            width,
+            height,
+        } = frame.decompress(&mut buffer, &decompressor).unwrap();
+        // Then display the frame
+        // Then add a delay to maintain a steady framerate
+    }
+    ...
+}
+```
+
+Note that in the Cargo.toml `liquid-assets-inflate` is added to `[dependencies]` and `liquid-assets-deflate` is added to `[build-dependencies]`.
+
+```
+[dependencies]
+liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.1" }
+[build-dependencies]
+liquid-assets-deflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.1" }
+```
+
+## Assets Directory Format
+
+In the following example, `espressif` is a static asset, whereas `github` and `loading` are animations. Images must already be the desired size. Frames must be named `snake_case` with a numeric suffix starting with 1.
 
 ```
 assets
@@ -40,126 +117,10 @@ assets
 
 To use `liquid-assets`, first add `liquid-assets-deflate` to the `[dev-dependencies]` of your Cargo.toml.
 
-```
-[build-dependencies]
-liquid-assets-deflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.0" }
-```
-
-Next, in your `build.rs` file, implement the `liquid-assets_deflate::Compressor` trait onto a struct. You can probably just copy from `examples/build.rs` as examples for common compression libraries are included.
-
-Run the `liquid_assets_deflate::include_assets_if_changed` function, providing these parameters:
-
-- The assets source directory (relative to CARGO_MANIFEST_DIR)
-- The assets binary directory (relative to CARGO_MANIFEST_DIR), which will be created. You may want to add this to your .gitignore
-- The target colour format (currently only RGB565 is supported)
-- A reference to a struct which has the `Compressor` trait implemented
-
-```rust
-use liquid_assets_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
-
-struct ZlibCompressor {}
-impl Compressor for ZlibCompressor {
-    // The compression is infallible
-    type Error = ();
-
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        const COMPRESSION_LEVEL: u8 = 5;
-        Ok(miniz_oxide::deflate::compress_to_vec(
-            input_bytes,
-            COMPRESSION_LEVEL,
-        ))
-    }
-}
-
-fn main() {
-    let zlib_compressor = ZlibCompressor {};
-
-    rebuild_assets_if_changed(
-        "./assets",
-        "./asset-binaries",
-        TargetColorFormat::Rgb565,
-        &zlib_compressor,
-    );
-```
-
-Now when you run `cargo build`, the assets binaries will be built. The assets will only be rebuilt if:
-
-- There is a change to the assets source directory (e.g. you add or remove an asset).
-- You run `REBUILD_ASSETS=1 cargo build`
-- Another part of the `build.rs` file triggers a rebuild (preventing this is WIP!)
-
-Next, the deflate component, which uses proc-macro magic.
-
-Add `liquid-assets-inflate` to your Cargo.toml:
-
-```
-[dependencies]
-liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.0" }
-```
-
-In a source file (not inside of a function), invoke the `include_assets` macro, providing a struct which implements the `liquid_assets_inflate::Decompressor` trait. Again, there are some examples you can copy.
-
-```rust
-const BUFFER_SIZE: usize = 128 * 128 * 2;
-
-struct ZlibDecompressor {}
-impl Decompressor for ZlibDecompressor {
-    type Error = miniz_oxide::inflate::TINFLStatus;
-
-    fn decompress<const N: usize>(
-        &self,
-        buffer: &mut [u8; N],
-        compressed_data: &[u8],
-    ) -> Result<usize, Self::Error> {
-        miniz_oxide::inflate::decompress_slice_iter_to_slice(
-            buffer,
-            core::iter::once(compressed_data),
-            false,
-            false,
-        )
-    }
-}
-
-liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
-
-pub fn run() {
-    let mut buffer = [0_u8; BUFFER_SIZE];
-    let decompressor = ZlibDecompressor {};
-    // Decompress the `espressif` static asset into the buffer
-    assets::ESPRESSIF
-        .decompress(&mut buffer, &decompressor)
-        .unwrap();
-    // Decompress frame 3 of the `loading` animation into the buffer
-    let bytes_written = assets::LOADING
-        .decompress_frame(3, &mut buffer, &decompressor)
-        .unwrap();
-    // Loop through an animation by using a iterator
-    for frame in assets::GITHUB.as_iter() {
-        frame.decompress(&mut buffer, &decompressor).unwrap();
-        // You could add a delay here to maintain a framerate
-    }
-}
-```
-
-TODO: Document the stuff created by the proc macro.
-
-## BYOCompression Library
-
-Rust compression libraries can be found here:
-
-https://crates.io/categories/compression
-
-Libraries should be `no_std` and `no_alloc`.
-
 # TODO
 
-- decompression function should return tuple with (slice of buffer for image data, width, height). Or maybe this should be a struct?
-- Add at least one other example of a compression/decompression library implementation
-- Ensure all frames in an animation are the same size
 - Flood docstrings everywhere, including the proc macro generated code
 - Add a licence like a true professional
-- The delay code in the example is wonky
-- Improve the README
 
 # Long Term TODO
 
@@ -170,8 +131,9 @@ Libraries should be `no_std` and `no_alloc`.
 - Add a way to build assets without adding to build.rs
 - Support for bitmaps?
 - Prevent unwanted rebuilds
+- Only rebuild the specific assets that changed (this would add a lot of complexity)
 
-# Other notes
+## Other notes
 
 You can convert a gif to frames using:
 

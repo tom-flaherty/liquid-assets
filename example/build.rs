@@ -44,12 +44,12 @@ impl<const N: usize> Compressor for LzssCompressor<N> {
         use lzss::{SliceReader, SliceWriter};
         let mut output = [0_u8; N];
         type LzssEncoder = lzss::Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
-        let bytes_written = LzssEncoder::compress_with_buffer(
+        let bytes_wrote = LzssEncoder::compress_with_buffer(
             SliceReader::new(input_bytes),
             SliceWriter::new(&mut output),
             &mut self.buffer,
         )?;
-        Ok(output[..bytes_written].to_vec())
+        Ok(output[..bytes_wrote].to_vec())
     }
 }
 
@@ -86,7 +86,7 @@ fn main() {
         &mut compressor,
     );
 
-    // The rest of the script if 
+    // The rest of the script if
 
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)

@@ -1,5 +1,4 @@
 use liquid_assets_inflate::Decompressor;
-use lzss::LzssError;
 
 #[allow(unused)]
 pub struct MinizOxideDecompressor {}
@@ -23,7 +22,7 @@ impl Decompressor for MinizOxideDecompressor {
 #[allow(unused)]
 pub struct LzssDecompressor {}
 impl Decompressor for LzssDecompressor {
-    type Error = LzssError<void::Void, lzss::SliceWriteError>;
+    type Error = lzss::LzssError<void::Void, lzss::SliceWriteError>;
 
     fn decompress<const N: usize>(
         &self,
