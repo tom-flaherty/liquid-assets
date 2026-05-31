@@ -53,7 +53,7 @@ fn main() {
 
 This will rebuild the assets whenever the assets source directory changes, or if the user runs `REBUILD_ASSETS=1 cargo build`.
 
-Next, to load these animations in the embedded Rust code, simply call the `include_assets!` macro.
+Next, to load these animations in the embedded Rust code, simply call the `include_assets!` macro which is provided by `liquid_assets_inflate`.
 
 ```rust
 use liquid_assets_inflate::include_assets;
