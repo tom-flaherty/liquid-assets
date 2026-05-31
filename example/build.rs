@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use liquid_assets_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
 
 #[allow(unused)]
@@ -8,7 +6,7 @@ impl Compressor for MinizOxideCompressor {
     // The compression is infallible
     type Error = ();
 
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
         const COMPRESSION_LEVEL: u8 = 5;
         Ok(miniz_oxide::deflate::compress_to_vec(
             input_bytes,
@@ -17,38 +15,99 @@ impl Compressor for MinizOxideCompressor {
     }
 }
 
-#[allow(unused)]
-struct BrotlicCompressor {}
-impl Compressor for BrotlicCompressor {
-    type Error = ();
+// #[allow(unused)]
+// struct BrotlicCompressor {}
+// impl Compressor for BrotlicCompressor {
+//     type Error = ();
 
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        let mut compressor = brotlic::CompressorWriter::new(Vec::new());
-        compressor.write_all(input_bytes).map_err(|_| ())?;
-        Ok(compressor.into_inner().unwrap())
+//     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+//         let mut compressor = brotlic::CompressorWriter::new(Vec::new());
+//         compressor.write_all(input_bytes).map_err(|_| ())?;
+//         Ok(compressor.into_inner().unwrap())
+//     }
+// }
+
+// #[allow(unused)]
+// struct Lz4FlexCompressor {}
+// impl Compressor for Lz4FlexCompressor {
+//     type Error = ();
+
+//     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+//         Ok(lz4_flex::compress_prepend_size(input_bytes))
+//     }
+// }
+
+// #[allow(unused)]
+// struct Lz4Compressor {}
+// impl Lz4Compressor {
+//     pub fn new() -> Self {
+//         Self {}
+//     }
+// }
+// impl Compressor for Lz4Compressor {
+//     type Error = ();
+
+//     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+//         let mut output: Vec<u8> = Vec::new();
+//         lz4::EncoderBuilder::new().level(4).build(output).unwrap();
+//         Ok(output)
+//     }
+// }
+
+#[allow(unused)]
+struct LzssCompressor<const N: usize> {
+    buffer: [u8; 2048],
+}
+#[allow(unused)]
+impl<const N: usize> LzssCompressor<N> {
+    pub fn new() -> Self {
+        Self {
+            buffer: [0_u8; 2048],
+        }
+    }
+}
+impl<const N: usize> Compressor for LzssCompressor<N> {
+    type Error = lzss::LzssError<void::Void, lzss::SliceWriteError>;
+
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        use lzss::{SliceReader, SliceWriter};
+        let mut output = [0_u8; N];
+        type LzssEncoder = lzss::Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
+        let bytes_written = LzssEncoder::compress_with_buffer(
+            SliceReader::new(input_bytes),
+            SliceWriter::new(&mut output),
+            &mut self.buffer,
+        )?;
+        Ok(output[..bytes_written].to_vec())
     }
 }
 
-#[allow(unused)]
-struct Lz4FlexCompressor {}
-impl Compressor for Lz4FlexCompressor {
+struct NoCompressor {}
+impl Compressor for NoCompressor {
     type Error = ();
 
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
-        Ok(lz4_flex::compress_prepend_size(input_bytes))
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        Ok(input_bytes.to_vec())
     }
 }
 
 fn main() {
-    // let compressor = MinizOxideCompressor {};
+    // let mut compressor = MinizOxideCompressor {};
+
+    // const MAX_INPUT_SIZE: usize = 135 * 240 * 2;
+    // let mut compressor: LzssCompressor<MAX_INPUT_SIZE> = LzssCompressor::new();
+
+    let mut compressor = NoCompressor {};
+
+    // let compressor = Lz4Compressor {};
     // let compressor = BrotlicCompressor {};
-    let compressor = Lz4FlexCompressor {};
+    // let compressor = Lz4FlexCompressor {};
 
     rebuild_assets_if_changed(
         "./assets",
         "./asset-binaries",
         TargetColorFormat::Rgb565,
-        &compressor,
+        &mut compressor,
     );
 
     linker_be_nice();

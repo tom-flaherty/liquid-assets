@@ -7,71 +7,12 @@ use esp_hal::peripherals::Peripherals;
 #[cfg(feature = "display")]
 use esp_hal::time::Duration;
 use esp_hal::time::Instant;
-use liquid_assets_inflate::Decompressor;
 use rtt_target::rprintln;
 
+mod decompressors;
+use decompressors::*;
+
 const BUFFER_SIZE: usize = 128 * 128 * 2;
-
-struct MinizOxideDecompressor {}
-impl Decompressor for MinizOxideDecompressor {
-    type Error = miniz_oxide::inflate::TINFLStatus;
-
-    fn decompress<const N: usize>(
-        &self,
-        buffer: &mut [u8; N],
-        compressed_data: &[u8],
-    ) -> Result<usize, Self::Error> {
-        miniz_oxide::inflate::decompress_slice_iter_to_slice(
-            buffer,
-            core::iter::once(compressed_data),
-            false,
-            false,
-        )
-    }
-}
-
-// struct BrotliDecompressor {}
-// impl Decompressor for BrotliDecompressor {
-//     type Error;
-
-//     fn decompress<const N: usize>(
-//         &self,
-//         buffer: &mut [u8; N],
-//         compressed_data: &[u8],
-//     ) -> Result<usize, Self::Error> {
-//     }
-// }
-
-// struct BrotlicDecompressor {}
-// impl Decompressor for BrotlicDecompressor {
-//     type Error = ();
-
-//     fn decompress<const N: usize>(
-//         &self,
-//         buffer: &mut [u8; N],
-//         compressed_data: &[u8],
-//     ) -> Result<usize, Self::Error> {
-//         let mut decompressor = brotlic::DecompressorReader::new(compressed_data);
-//         let mut decoded_output: heapless::Vec<u8, N> = heapless::Vec::new();
-//         // decompressor.read_to_end();
-
-//         Err(())
-//     }
-// }
-
-struct Lz4FlexDecompressor {}
-impl Decompressor for Lz4FlexDecompressor {
-    type Error = ();
-
-    fn decompress<const N: usize>(
-        &self,
-        buffer: &mut [u8; N],
-        compressed_data: &[u8],
-    ) -> Result<usize, Self::Error> {
-        lz4_flex::decompress_size_prepended(compressed_data);
-        Err(())
-    }
-}
 
 liquid_assets_inflate::include_assets!("asset-binaries", BUFFER_SIZE);
 // liquid_assets_inflate::include_assets!("asset-binaries", 32768);
@@ -202,7 +143,10 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
         .unwrap();
     display.clear(Rgb565::BLACK).unwrap();
 
-    let decompressor = MinizOxideDecompressor {};
+    // let decompressor = MinizOxideDecompressor {};
+    let decompressor = NoDecompressor {};
+    // let decompressor = LzssDecompressor {};
+
     let mut frame_buffer = [0_u8; 135 * 240 * 2];
 
     let delay = Delay::new();

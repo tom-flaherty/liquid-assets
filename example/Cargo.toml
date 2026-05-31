@@ -22,7 +22,9 @@ miniz_oxide = "0.9.1"
 mipidsi = { version = "0.10.0", optional = true }
 embedded-hal-bus = { version = "0.3.0", optional = true }
 embedded-graphics = { version = "0.8.2", optional = true }
-lz4_flex = "0.13.1"
+lzss = { version = "0.9.1", default-features = false }
+void = { version = "1.0.2", default-features = false } # for lzss
+# lz4_flex = { version = "0.13.1", default-features = false }
 # brotlic = "0.8.2"
 # heapless = "0.9.3"
 
@@ -30,8 +32,11 @@ lz4_flex = "0.13.1"
 liquid-assets-deflate = { path = "../liquid-assets-deflate" }
 miniz_oxide = "0.9.1"
 # brotli = "8.0.3"
-brotlic = "0.8.2"
-lz4_flex = "0.13.1"
+# brotlic = "0.8.2"
+# lz4_flex = { version = "0.13.1", default-features = false }
+# lz4 = "1.28.1"
+lzss = { version = "0.9.1", default-features = false, features = ["safe"] }
+void = { version = "1.0.2", default-features = false } # For lzss
 
 # For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
 [profile.dev]

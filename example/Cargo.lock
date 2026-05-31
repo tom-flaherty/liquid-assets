@@ -182,24 +182,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "brotlic"
-version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f552f56f302af0006c32b50bfa2bdb4696fd6ba33c3ab9f6225fefdb1efdc680"
-dependencies = [
- "brotlic-sys",
-]
-
-[[package]]
-name = "brotlic-sys"
-version = "0.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afdec5c62bc97b56349053cf66ba503af5c2448591be61c3ad70a5f11b57e574"
-dependencies = [
- "cc",
-]
-
-[[package]]
 name = "built"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -877,7 +859,6 @@ dependencies = [
 name = "example"
 version = "0.1.0"
 dependencies = [
- "brotlic",
  "critical-section",
  "embedded-graphics",
  "embedded-hal-bus",
@@ -886,10 +867,11 @@ dependencies = [
  "esp-hal",
  "liquid-assets-deflate",
  "liquid-assets-inflate",
- "lz4_flex",
+ "lzss",
  "miniz_oxide 0.9.1",
  "mipidsi",
  "rtt-target",
+ "void",
 ]
 
 [[package]]
@@ -1299,12 +1281,12 @@ dependencies = [
 ]
 
 [[package]]
-name = "lz4_flex"
-version = "0.13.1"
+name = "lzss"
+version = "0.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7ef0d4ed8669f8f8826eb00dc878084aa8f253506c4fd5e8f58f5bce72ddb97e"
+checksum = "ffcbd9e87fc27b574d4e37d4bf0d302828391f80ea3762dfce02d808fa257a01"
 dependencies = [
- "twox-hash",
+ "void",
 ]
 
 [[package]]
@@ -2090,12 +2072,6 @@ checksum = "a2abe9b86193656635d2411dc43050282ca48aa31c2451210f4202550afb7526"
 dependencies = [
  "winnow",
 ]
-
-[[package]]
-name = "twox-hash"
-version = "2.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ea3136b675547379c4bd395ca6b938e5ad3c3d20fad76e7fe85f9e0d011419c"
 
 [[package]]
 name = "typenum"
