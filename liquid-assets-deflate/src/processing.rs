@@ -70,7 +70,7 @@ impl AssetProcessor {
         &mut self,
         input_path: &Path,
         output_dir: &Path,
-        compressor: &C,
+        compressor: &mut C,
     ) where
         <C as crate::Compressor>::Error: fmt::Debug,
     {
@@ -126,7 +126,7 @@ impl AssetProcessor {
         &mut self,
         static_asset_path: &Path,
         output_dir: &Path,
-        compressor: &C,
+        compressor: &mut C,
     ) where
         <C as Compressor>::Error: fmt::Debug,
     {
@@ -236,7 +236,7 @@ impl AssetProcessor {
         output_dir: &Path,
         file_name_lowercase: &String,
         image: &DynamicImage,
-        compressor: &C,
+        compressor: &mut C,
     ) where
         <C as Compressor>::Error: fmt::Debug,
     {
@@ -259,7 +259,7 @@ impl AssetProcessor {
         &mut self,
         animated_asset_path: &Path,
         output_dir: &Path,
-        compressor: &C,
+        compressor: &mut C,
     ) where
         <C as Compressor>::Error: fmt::Debug,
     {

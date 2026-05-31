@@ -13,14 +13,14 @@ use std::{
 pub trait Compressor {
     type Error;
 
-    fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error>;
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
 pub fn rebuild_assets_if_changed<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
     target_color_format: TargetColorFormat,
-    compressor: &C,
+    compressor: &mut C,
 ) where
     <C as Compressor>::Error: fmt::Debug,
 {
