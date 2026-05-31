@@ -20,58 +20,6 @@ impl Decompressor for MinizOxideDecompressor {
     }
 }
 
-// pub struct BrotliDecompressor {}
-// impl Decompressor for BrotliDecompressor {
-//     type Error;
-
-//     fn decompress<const N: usize>(
-//         &self,
-//         buffer: &mut [u8; N],
-//         compressed_data: &[u8],
-//     ) -> Result<usize, Self::Error> {
-//     }
-// }
-
-// pub struct BrotlicDecompressor {}
-// impl Decompressor for BrotlicDecompressor {
-//     type Error = ();
-
-//     fn decompress<const N: usize>(
-//         &self,
-//         buffer: &mut [u8; N],
-//         compressed_data: &[u8],
-//     ) -> Result<usize, Self::Error> {
-//         let mut decompressor = brotlic::DecompressorReader::new(compressed_data);
-//         let mut decoded_output: heapless::Vec<u8, N> = heapless::Vec::new();
-//         // decompressor.read_to_end();
-
-//         Err(())
-//     }
-// }
-
-// #[allow(unused)]
-// pub struct Lz4FlexDecompressor {}
-// impl Decompressor for Lz4FlexDecompressor {
-//     type Error = lz4_flex::block::DecompressError;
-
-//     fn decompress<const N: usize>(
-//         &self,
-//         buffer: &mut [u8; N],
-//         compressed_data: &[u8],
-//     ) -> Result<usize, Self::Error> {
-//         let mut other_buffer = [0_u8; 135 * 135 * 2];
-//         let bytes_written_maybe =
-//             lz4_flex::decompress_into(compressed_data, other_buffer.as_mut_slice())?;
-//         buffer.copy_from_slice(other_buffer.as_slice());
-//         Ok(bytes_written_maybe)
-
-//         // let output = lz4_flex::decompress_size_prepended(compressed_data)?;
-//         // let bytes_written = output.len();
-//         // buffer.copy_from_slice(output.as_slice());
-//         // Ok(bytes_written)
-//     }
-// }
-
 #[allow(unused)]
 pub struct LzssDecompressor {}
 impl Decompressor for LzssDecompressor {

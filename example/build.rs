@@ -1,5 +1,10 @@
-use liquid_assets_deflate::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
+use liquid_assets_deflate::{Compressor, TargetColorFormat, build_assets};
 
+// I have 3 example implementations of the Compressor trait below
+// You only need to provide one in your project!
+
+/// Implementation of the miniz_oxide compression library
+/// Very high compression ratio, and slightly slower than lzss
 #[allow(unused)]
 struct MinizOxideCompressor {}
 impl Compressor for MinizOxideCompressor {
@@ -15,45 +20,11 @@ impl Compressor for MinizOxideCompressor {
     }
 }
 
-// #[allow(unused)]
-// struct BrotlicCompressor {}
-// impl Compressor for BrotlicCompressor {
-//     type Error = ();
-
-//     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
-//         let mut compressor = brotlic::CompressorWriter::new(Vec::new());
-//         compressor.write_all(input_bytes).map_err(|_| ())?;
-//         Ok(compressor.into_inner().unwrap())
-//     }
-// }
-
-// #[allow(unused)]
-// struct Lz4FlexCompressor {}
-// impl Compressor for Lz4FlexCompressor {
-//     type Error = ();
-
-//     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
-//         Ok(lz4_flex::compress_prepend_size(input_bytes))
-//     }
-// }
-
-// #[allow(unused)]
-// struct Lz4Compressor {}
-// impl Lz4Compressor {
-//     pub fn new() -> Self {
-//         Self {}
-//     }
-// }
-// impl Compressor for Lz4Compressor {
-//     type Error = ();
-
-//     fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
-//         let mut output: Vec<u8> = Vec::new();
-//         lz4::EncoderBuilder::new().level(4).build(output).unwrap();
-//         Ok(output)
-//     }
-// }
-
+/// Implementation of the lzss compression library
+/// The lzss crate has a default "safe" features which ensures code safety but
+/// slightly reduces performance
+/// lzss compresses into a buffer, which we allocate with size N. To ensure robustness,
+/// allocates the amount of bytes to store the largest asset uncompressed
 #[allow(unused)]
 struct LzssCompressor<const N: usize> {
     buffer: [u8; 2048],
@@ -82,6 +53,9 @@ impl<const N: usize> Compressor for LzssCompressor<N> {
     }
 }
 
+/// Implementation with no compression, for comparison
+/// You may find that loading from flash memory is actually taking up a lot of time
+#[allow(unused)]
 struct NoCompressor {}
 impl Compressor for NoCompressor {
     type Error = ();
@@ -92,23 +66,27 @@ impl Compressor for NoCompressor {
 }
 
 fn main() {
-    // let mut compressor = MinizOxideCompressor {};
+    // Create a compressor, declared as mutable
+
+    let mut compressor = MinizOxideCompressor {};
 
     // const MAX_INPUT_SIZE: usize = 135 * 240 * 2;
     // let mut compressor: LzssCompressor<MAX_INPUT_SIZE> = LzssCompressor::new();
 
-    let mut compressor = NoCompressor {};
+    // let mut compressor = NoCompressor {};
 
-    // let compressor = Lz4Compressor {};
-    // let compressor = BrotlicCompressor {};
-    // let compressor = Lz4FlexCompressor {};
-
-    rebuild_assets_if_changed(
+    // Build the assets. They will only rebuild if:
+    // - The assets directory changes (if rust-analyzer is running, this may happen immediately)
+    // - You run `REBUILD_ASSETS=1 cargo build`
+    // - Another part of the build script reruns build.rs (this happens infrequently)
+    build_assets(
         "./assets",
         "./asset-binaries",
         TargetColorFormat::Rgb565,
         &mut compressor,
     );
+
+    // The rest of the script if 
 
     linker_be_nice();
     // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
