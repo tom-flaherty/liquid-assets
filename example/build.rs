@@ -1,0 +1,159 @@
+use liquid_assets_deflate::{Compressor, TargetColorFormat, build_assets};
+
+// I have 3 example implementations of the Compressor trait below
+// You only need to provide one in your project!
+
+/// Implementation of the miniz_oxide compression library
+/// Very high compression ratio, and slightly slower than lzss
+#[allow(unused)]
+struct MinizOxideCompressor {}
+impl Compressor for MinizOxideCompressor {
+    // The compression is infallible
+    type Error = ();
+
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        const COMPRESSION_LEVEL: u8 = 5;
+        Ok(miniz_oxide::deflate::compress_to_vec(
+            input_bytes,
+            COMPRESSION_LEVEL,
+        ))
+    }
+}
+
+/// Implementation of the lzss compression library
+/// The lzss crate has a default "safe" features which ensures code safety but
+/// slightly reduces performance
+/// lzss compresses into a buffer, which we allocate with size N. To ensure robustness,
+/// allocates the amount of bytes to store the largest asset uncompressed
+#[allow(unused)]
+struct LzssCompressor<const N: usize> {
+    buffer: [u8; 2048],
+}
+#[allow(unused)]
+impl<const N: usize> LzssCompressor<N> {
+    pub fn new() -> Self {
+        Self {
+            buffer: [0_u8; 2048],
+        }
+    }
+}
+impl<const N: usize> Compressor for LzssCompressor<N> {
+    type Error = lzss::LzssError<void::Void, lzss::SliceWriteError>;
+
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        use lzss::{SliceReader, SliceWriter};
+        let mut output = [0_u8; N];
+        type LzssEncoder = lzss::Lzss<10, 4, 0x20, { 1 << 10 }, { 2 << 10 }>;
+        let bytes_wrote = LzssEncoder::compress_with_buffer(
+            SliceReader::new(input_bytes),
+            SliceWriter::new(&mut output),
+            &mut self.buffer,
+        )?;
+        Ok(output[..bytes_wrote].to_vec())
+    }
+}
+
+/// Implementation with no compression, for comparison
+/// You may find that loading from flash memory is actually taking up a lot of time
+#[allow(unused)]
+struct NoCompressor {}
+impl Compressor for NoCompressor {
+    type Error = ();
+
+    fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        Ok(input_bytes.to_vec())
+    }
+}
+
+fn main() {
+    // Create a compressor, declared as mutable
+
+    let mut compressor = MinizOxideCompressor {};
+
+    // const MAX_INPUT_SIZE: usize = 135 * 240 * 2;
+    // let mut compressor: LzssCompressor<MAX_INPUT_SIZE> = LzssCompressor::new();
+
+    // let mut compressor = NoCompressor {};
+
+    // Build the assets. They will only rebuild if:
+    // - The assets directory changes (if rust-analyzer is running, this may happen immediately)
+    // - You run `REBUILD_ASSETS=1 cargo build`
+    // - Another part of the build script reruns build.rs (this happens infrequently)
+    build_assets(
+        "./assets",
+        "./asset-binaries",
+        TargetColorFormat::Rgb565,
+        &mut compressor,
+    );
+
+    // The rest of the script if
+
+    linker_be_nice();
+    // make sure linkall.x is the last linker script (otherwise might cause problems with flip-link)
+    println!("cargo:rustc-link-arg=-Tlinkall.x");
+}
+
+fn linker_be_nice() {
+    let args: Vec<String> = std::env::args().collect();
+    if args.len() > 1 {
+        let kind = &args[1];
+        let what = &args[2];
+
+        match kind.as_str() {
+            "undefined-symbol" => match what.as_str() {
+                what if what.starts_with("_defmt_") => {
+                    eprintln!();
+                    eprintln!(
+                        "💡 `defmt` not found - make sure `defmt.x` is added as a linker script and you have included `use defmt_rtt as _;`"
+                    );
+                    eprintln!();
+                }
+                "_stack_start" => {
+                    eprintln!();
+                    eprintln!("💡 Is the linker script `linkall.x` missing?");
+                    eprintln!();
+                }
+                what if what.starts_with("esp_rtos_") => {
+                    eprintln!();
+                    eprintln!(
+                        "💡 `esp-radio` has no scheduler enabled. Make sure you have initialized `esp-rtos` or provided an external scheduler."
+                    );
+                    eprintln!();
+                }
+                "embedded_test_linker_file_not_added_to_rustflags" => {
+                    eprintln!();
+                    eprintln!(
+                        "💡 `embedded-test` not found - make sure `embedded-test.x` is added as a linker script for tests"
+                    );
+                    eprintln!();
+                }
+                "free"
+                | "malloc"
+                | "calloc"
+                | "get_free_internal_heap_size"
+                | "malloc_internal"
+                | "realloc_internal"
+                | "calloc_internal"
+                | "free_internal" => {
+                    eprintln!();
+                    eprintln!(
+                        "💡 Did you forget the `esp-alloc` dependency or didn't enable the `compat` feature on it?"
+                    );
+                    eprintln!();
+                }
+                _ => (),
+            },
+            // we don't have anything helpful for "missing-lib" yet
+            _ => {
+                std::process::exit(1);
+            }
+        }
+
+        std::process::exit(0);
+    }
+
+    println!(
+        "cargo:rustc-link-arg=--error-handling-script={}",
+        std::env::current_exe().unwrap().display()
+    );
+}

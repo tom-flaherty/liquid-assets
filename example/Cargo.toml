@@ -1,0 +1,50 @@
+[package]
+edition = "2024"
+name = "example"
+rust-version = "1.88"
+version = "0.1.0"
+
+[[bin]]
+name = "example"
+path = "./src/bin/main.rs"
+
+[dependencies]
+esp-hal = { version = "~1.1.0", features = ["esp32c3", "unstable"] }
+
+esp-bootloader-esp-idf = { version = "0.5.0", features = ["esp32c3"] }
+
+critical-section = "1.2.0"
+esp-alloc = "0.10.0"
+rtt-target = "0.6.2"
+
+liquid-assets-inflate = { path = "../liquid-assets-inflate" }
+miniz_oxide = "0.9.1"
+mipidsi = { version = "0.10.0", optional = true }
+embedded-hal-bus = { version = "0.3.0", optional = true }
+embedded-graphics = { version = "0.8.2", optional = true }
+lzss = { version = "0.9.1", default-features = false }
+void = { version = "1.0.2", default-features = false } # for lzss
+
+[build-dependencies]
+liquid-assets-deflate = { path = "../liquid-assets-deflate" }
+miniz_oxide = "0.9.1"
+lzss = { version = "0.9.1", default-features = false, features = ["safe"] }
+void = { version = "1.0.2", default-features = false } # For lzss
+
+# For fine tuning these settings, please refer to https://doc.rust-lang.org/cargo/reference/profiles.html
+[profile.dev]
+# The default debug profile is too slow and too big for resource-constrained devices.
+# Always build with some optimizations enabled.
+opt-level = "s"
+
+[profile.release]
+codegen-units = 1 # LLVM can perform better optimizations using a single thread
+debug = 2         # prefer slower builds but better debugging experience
+lto = 'fat'
+opt-level = 's'
+
+[workspace]
+
+[features]
+default = []
+display = ["mipidsi", "embedded-hal-bus", "embedded-graphics"]

@@ -1,0 +1,3 @@
+[workspace]
+members = ["liquid-assets-deflate", "liquid-assets-inflate"]
+resolver = "3"
