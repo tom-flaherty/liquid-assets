@@ -135,6 +135,8 @@ To use `liquid-assets`, first add `liquid-assets-deflate` to the `[dev-dependenc
 
 ## Other notes
 
+Only tested on Linux.
+
 You can convert a gif to frames using:
 
 `ffmpeg -i mygif.gif frame_%04d.png`

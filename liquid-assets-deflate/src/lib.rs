@@ -10,12 +10,27 @@ use std::{
     path::{Path, PathBuf},
 };
 
+/// The Compressor trait should be implemented onto a struct and passed to the
+/// build_assets function. It returns a Vec as it is expected to be run on a
+/// desktop with access to std and alloc
 pub trait Compressor {
     type Error;
 
     fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error>;
 }
 
+/// Build the assets into compressed binaries using the provided compressor implementation
+/// When used in a build.rs file, the assets will be rebuilt when:
+/// - The assets input directory changes
+/// - The user runs REBUILD_ASSETS=1 cargo build
+/// - The project is being built for the first time
+/// - Another part of the build script has triggered build.rs to be rerun.
+/// The following parameters should be passed:
+/// - Path to the assets input directory, relative to the Cargo.toml file
+/// - Path to directory where asset binaries should be stored. This directory
+/// should be added to .gitignore, as it will be emptied before the first build
+/// - Colour format for the display (currently only RGB565 is supported)
+/// - Reference to struct which implements the Compressor trait
 pub fn build_assets<C: Compressor>(
     input_dir: &'static str,
     output_dir: &'static str,
@@ -81,13 +96,13 @@ pub fn build_assets<C: Compressor>(
 // To view output logs when running the test, run `cargo test -- --nocapture`
 #[cfg(test)]
 mod tests {
-    use super::{Compressor, TargetColorFormat, rebuild_assets_if_changed};
+    use super::{Compressor, TargetColorFormat, build_assets};
 
     struct ZlibCompressor {}
     impl Compressor for ZlibCompressor {
         type Error = ();
 
-        fn compress(&self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
+        fn compress(&mut self, input_bytes: &[u8]) -> Result<Vec<u8>, Self::Error> {
             const COMPRESSION_LEVEL: u8 = 5;
             Ok(miniz_oxide::deflate::compress_to_vec(
                 input_bytes,
@@ -98,12 +113,12 @@ mod tests {
 
     #[test]
     fn check_decompression() {
-        let compressor = ZlibCompressor {};
-        rebuild_assets_if_changed(
+        let mut compressor = ZlibCompressor {};
+        build_assets(
             "test-assets",
             "asset-binaries",
             TargetColorFormat::Rgb565,
-            &compressor,
+            &mut compressor,
         )
     }
 }

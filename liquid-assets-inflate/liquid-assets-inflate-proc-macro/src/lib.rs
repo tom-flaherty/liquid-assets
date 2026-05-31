@@ -40,6 +40,9 @@ impl Parse for MacroArgs {
     }
 }
 
+/// Generate an assets module containing the compressed image data, organised into
+/// StaticAsset and AnimatedAsset structs. The input is the path to the asset binaries
+/// directory, relative to the Cargo.toml
 #[proc_macro]
 #[proc_macro_error]
 pub fn include_assets(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -226,6 +229,7 @@ fn process_asset_name(asset_dir_entry: &DirEntry) -> proc_macro2::TokenStream {
 
 fn define_module_types() -> proc_macro2::TokenStream {
     quote! {
+        #[doc = "Errors which may be returned by decompression methods. Errors may originate from the compression crate"]
         #[derive(Debug)]
         pub enum Error<DecompressionError> {
             Decompression(DecompressionError),
@@ -233,21 +237,28 @@ fn define_module_types() -> proc_macro2::TokenStream {
             FrameOutOfRange,
         }
 
+        #[doc = "Returned by decompression functions"]
         pub struct DecompressedData {
+            #[doc = "The number of bytes wrote to the buffer"]
             pub bytes_wrote: usize,
+            #[doc = "The width of the image"]
             pub width: u16,
+            #[doc = "The height of the image"]
             pub height: u16,
         }
 
+        #[doc = "A static (non-animated) asset"]
         pub struct StaticAsset {
             data: &'static [u8],
             width: u16,
             height: u16,
         }
         impl StaticAsset {
+            #[doc = "Get the compressed data as a slice"]
             pub fn get_comressed_data(&self) -> &'static [u8] {
                 self.data
             }
+            #[doc = "Decompress the asset to the buffer by passing a Decompressor"]
             pub fn decompress<const N: usize, D: Decompressor>(
                 &self,
                 buffer: &mut [u8; N],
@@ -269,15 +280,18 @@ fn define_module_types() -> proc_macro2::TokenStream {
             }
         }
 
+        #[doc = "An animated asset, which is a collection of frames (images) with the same dimensions"]
         pub struct AnimatedAsset<const N: usize> {
             frames: &'static [&'static [u8]],
             width: u16,
             height: u16,
         }
         impl<const N: usize> AnimatedAsset<N> {
+            #[doc = "Get the total number of frames in the animation"]
             pub const fn get_number_of_frames(&self) -> usize {
                 self.frames.len()
             }
+            #[doc = "Decompress a single frame into a buffer by passing a Decompressor. Returns an error if the frame is out of range"]
             pub fn decompress_frame<D: Decompressor>(
                 &self,
                 frame_number: usize,
@@ -292,6 +306,7 @@ fn define_module_types() -> proc_macro2::TokenStream {
                     Err(Error::FrameOutOfRange)
                 }
             }
+            #[doc = "Get the compressed data for a frame. Retuns error if the frame is out of range"]
             pub fn get_compressed_frame_data(
                 &self,
                 frame_number: usize,
@@ -302,7 +317,7 @@ fn define_module_types() -> proc_macro2::TokenStream {
                     Err(Error::FrameOutOfRange)
                 }
             }
-            #[doc = "This is a test docstring"]
+            #[doc = "Copy the compressed frame data into the buffer. Returns an error if the frame is out of range. On success, returns the number of bytes wrote"]
             pub fn copy_compressed_frame_data_to_buffer<D: Decompressor>(
                 &self,
                 frame_number: usize,
@@ -316,11 +331,13 @@ fn define_module_types() -> proc_macro2::TokenStream {
                     Err(Error::FrameOutOfRange)
                 }
             }
+            #[doc = "Access the animation as a FrameIterator (this method uses references so doesn't duplicate data)"]
             pub fn as_iter(&self) -> FrameIterator {
                 FrameIterator::new(self.frames, self.width, self.height)
             }
         }
 
+        #[doc = "Access the animation as a FrameIterator. This returns each frame in the animation as a static asset. Can be used with the syntax `for frame in assets::ANIMATION.as_iter() {...}`"]
         pub struct FrameIterator {
             frames: &'static [&'static [u8]],
             width: u16,
