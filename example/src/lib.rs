@@ -93,10 +93,10 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
     use esp_hal::{
         delay::Delay,
         gpio,
-        spi::{Mode, master},
+        spi::{master, Mode},
         time::Rate,
     };
-    use mipidsi::{Builder, interface::SpiInterface};
+    use mipidsi::{interface::SpiInterface, Builder};
     use rtt_target::rprint;
 
     rprintln!("Setting up display");
@@ -172,7 +172,7 @@ pub fn run_display_loop(peripherals: Peripherals) -> ! {
 
             let draw_start = Instant::now();
             image.draw(&mut display).unwrap();
-            rprint!("Draw time {} ", draw_start.elapsed(),);
+            rprint!("Draw time {} ", draw_start.elapsed());
 
             // Delay to maintain framerate. Note that decompression time may vary per frame
             delay.delay(

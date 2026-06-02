@@ -40,6 +40,11 @@ impl Parse for MacroArgs {
     }
 }
 
+struct AssetDefinitions {
+    asset_definition: proc_macro2::TokenStream,
+    asset_name: proc_macro2::TokenStream,
+}
+
 /// Generate an assets module containing the compressed image data, organised into
 /// StaticAsset and AnimatedAsset structs. The input is the path to the asset binaries
 /// directory, relative to the Cargo.toml
@@ -68,32 +73,47 @@ pub fn include_assets(input: proc_macro::TokenStream) -> proc_macro::TokenStream
         }
     };
 
-    let mut struct_quotes: Vec<proc_macro2::TokenStream> = Vec::new();
+    let mut asset_definitions: Vec<proc_macro2::TokenStream> = Vec::new();
+    let mut static_asset_names: Vec<proc_macro2::TokenStream> = Vec::new();
+    let mut animated_asset_names: Vec<proc_macro2::TokenStream> = Vec::new();
     for item in target_dir_read {
         let item = item.unwrap();
         let file_type = item.file_type().unwrap();
         if file_type.is_dir() {
-            struct_quotes.push(process_animated_asset(item, &buffer_size));
+            let AssetDefinitions {
+                asset_definition,
+                asset_name,
+            } = process_animated_asset(item, &buffer_size);
+            asset_definitions.push(asset_definition);
+            animated_asset_names.push(asset_name);
         } else if file_type.is_file() {
             if item.path().extension().unwrap_or(OsStr::new("")) == "bin" {
-                struct_quotes.push(process_static_asset(item));
+                let AssetDefinitions {
+                    asset_definition,
+                    asset_name,
+                } = process_static_asset(item);
+                asset_definitions.push(asset_definition);
+                static_asset_names.push(asset_name);
             }
         }
     }
 
     let struct_definitions = define_module_types();
+    let get_all_methods =
+        define_get_all_methods(static_asset_names, animated_asset_names, buffer_size);
 
     quote! {
         pub mod assets {
             use liquid_assets_inflate::Decompressor;
             #struct_definitions
-            #(#struct_quotes)*
+            #(#asset_definitions)*
+            #get_all_methods
         }
     }
     .into()
 }
 
-fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
+fn process_static_asset(asset: DirEntry) -> AssetDefinitions {
     let asset_name = process_asset_name(&asset);
 
     let path_to_bin: String = match asset.path().to_str() {
@@ -115,19 +135,19 @@ fn process_static_asset(asset: DirEntry) -> proc_macro2::TokenStream {
     let width = json_data.image_width;
     let height = json_data.image_height;
 
-    quote! {
-        pub const #asset_name: StaticAsset = StaticAsset {
-            data: include_bytes!(#path_to_bin).as_slice(),
-            width: #width,
-            height: #height,
-        };
+    AssetDefinitions {
+        asset_definition: quote! {
+            pub const #asset_name: StaticAsset = StaticAsset {
+                data: include_bytes!(#path_to_bin).as_slice(),
+                width: #width,
+                height: #height,
+            };
+        },
+        asset_name,
     }
 }
 
-fn process_animated_asset(
-    asset: DirEntry,
-    buffer_size: &BufferSizeParam,
-) -> proc_macro2::TokenStream {
+fn process_animated_asset(asset: DirEntry, buffer_size: &BufferSizeParam) -> AssetDefinitions {
     let asset_name = process_asset_name(&asset);
 
     let total_frames = match fs::read_dir(asset.path()) {
@@ -189,14 +209,17 @@ fn process_animated_asset(
         BufferSizeParam::LitInt(lit_int) => quote! {#lit_int},
     };
 
-    quote! {
-        pub const #asset_name: AnimatedAsset<#buffer_size> = AnimatedAsset {
-            frames: &[
-                #(#frame_data)*
-            ],
-            width: #width,
-            height: #height,
-        };
+    AssetDefinitions {
+        asset_definition: quote! {
+            pub const #asset_name: AnimatedAsset<#buffer_size> = AnimatedAsset {
+                frames: &[
+                    #(#frame_data)*
+                ],
+                width: #width,
+                height: #height,
+            };
+        },
+        asset_name,
     }
 }
 
@@ -370,6 +393,39 @@ fn define_module_types() -> proc_macro2::TokenStream {
                     None
                 }
             }
+        }
+    }
+}
+
+fn define_get_all_methods(
+    static_asset_names: Vec<proc_macro2::TokenStream>,
+    animated_asset_names: Vec<proc_macro2::TokenStream>,
+    buffer_size: BufferSizeParam,
+) -> proc_macro2::TokenStream {
+    let mut static_asset_processed: Vec<proc_macro2::TokenStream> = Vec::new();
+    for asset_name in static_asset_names {
+        static_asset_processed.push(quote! {&#asset_name, })
+    }
+
+    let mut animated_assets_processed: Vec<proc_macro2::TokenStream> = Vec::new();
+    for asset_name in animated_asset_names {
+        animated_assets_processed.push(quote! {&#asset_name, })
+    }
+
+    // TODO remove this duplicate code
+    let buffer_size = match buffer_size {
+        BufferSizeParam::Expr(expr) => quote! {{ super::#expr }},
+        BufferSizeParam::LitInt(lit_int) => quote! {#lit_int},
+    };
+
+    quote! {
+        #[doc = "Retuns a slice containing all StaticAsset structs defined in the assets module"]
+        pub const fn get_all_static_assets() -> &'static [&'static StaticAsset] {
+            &[#(#static_asset_processed)*].as_slice()
+        }
+        #[doc = "Returns a slice containing all AnimatedAsset structs defined in the assets module"]
+        pub const fn get_all_animated_assets() -> &'static [&'static AnimatedAsset<#buffer_size>] {
+            &[#(#animated_assets_processed)*].as_slice()
         }
     }
 }
