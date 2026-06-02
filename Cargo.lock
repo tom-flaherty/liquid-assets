@@ -445,14 +445,14 @@ dependencies = [
 
 [[package]]
 name = "liquid-assets-inflate"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "liquid-assets-inflate-proc-macro",
 ]
 
 [[package]]
 name = "liquid-assets-inflate-proc-macro"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
