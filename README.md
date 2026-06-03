@@ -191,7 +191,7 @@ Note that in the Cargo.toml `liquid-assets-inflate` is added to `[dependencies]`
 
 ```
 [dependencies]
-liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.2" }
+liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.2.0" }
 [build-dependencies]
 liquid-assets-deflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.1" }
 ```

@@ -48,13 +48,15 @@ pub fn run_benchmark() -> ! {
     // Decompress a single frame
     let start_time = Instant::now();
     let frame_number = 3;
-    let bytes_written = assets::LOADING
+    let DecompressedData {
+        bytes_wrote, ..
+    } = assets::LOADING
         .decompress_frame(frame_number, &mut buffer, &decompressor)
         .unwrap();
     rprintln!(
         "Decompressed frame {} of loading animation. Wrote {} bytes in {}",
         frame_number,
-        bytes_written,
+        bytes_wrote,
         start_time.elapsed()
     );
 
