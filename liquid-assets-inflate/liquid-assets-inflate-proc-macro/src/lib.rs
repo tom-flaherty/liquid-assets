@@ -320,14 +320,23 @@ fn define_module_types() -> proc_macro2::TokenStream {
                 frame_number: usize,
                 buffer: &mut [u8; N],
                 decompressor: &D,
-            ) -> Result<usize, Error<<D as Decompressor>::Error>> {
-                if frame_number < self.frames.len() {
-                    decompressor
-                        .decompress(buffer, self.frames[frame_number])
-                        .map_err(|e| Error::Decompression(e))
-                } else {
-                    Err(Error::FrameOutOfRange)
+            ) -> Result<DecompressedData, Error<<D as Decompressor>::Error>> {
+                if frame_number >= self.frames.len() {
+                    return Err(Error::FrameOutOfRange);
                 }
+                let bytes_wrote = decompressor
+                    .decompress(buffer, self.frames[frame_number])
+                    .map_err(|e| Error::Decompression(e))?;
+                // TODO this is only valid for RGB565
+                const BYTES_PER_PIXEL: usize = 2;
+                if bytes_wrote != (self.width as usize) * (self.height as usize) * BYTES_PER_PIXEL {
+                    return Err(Error::UnexpectedSize);
+                }
+                Ok(DecompressedData {
+                    bytes_wrote,
+                    width: self.width,
+                    height: self.height,
+                })
             }
             #[doc = "Get the compressed data for a frame. Retuns error if the frame is out of range"]
             pub fn get_compressed_frame_data(
