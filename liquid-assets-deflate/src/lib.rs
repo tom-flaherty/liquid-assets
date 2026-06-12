@@ -115,7 +115,7 @@ mod tests {
     fn check_decompression() {
         let mut compressor = ZlibCompressor {};
         build_assets(
-            "test-assets",
+            "../example/assets",
             "asset-binaries",
             TargetColorFormat::Rgb565,
             &mut compressor,
