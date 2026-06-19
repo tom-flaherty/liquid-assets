@@ -117,9 +117,13 @@ pub mod assets {
         height: u16,
     }
     impl StaticAsset {
-        ///Get the compressed data as a slice
+        /// Get the compressed data as a slice
         pub fn get_comressed_data(&self) -> &'static [u8] { /* ... */ }
-        ///Decompress the asset to the buffer by passing a Decompressor
+        /// Get the width of the frames in pixels
+        pub fn width(&self) -> u16 { self.width }
+        /// Get the height of the frames in pixels
+        pub fn height(&self) -> u16 { self.height }
+        /// Decompress the asset to the buffer by passing a Decompressor
         pub fn decompress<const N: usize, D: Decompressor>(
             &self,
             buffer: &mut [u8; N],
@@ -133,27 +137,31 @@ pub mod assets {
         height: u16,
     }
     impl<const N: usize> AnimatedAsset<N> {
-        ///Get the total number of frames in the animation
+        /// Get the total number of frames in the animation
         pub const fn get_number_of_frames(&self) -> usize { /* ... */ }
-        ///Decompress a single frame into a buffer by passing a Decompressor. Returns an error if the frame is out of range
+        /// Get the width of the frames in pixels
+        pub fn width(&self) -> u16 { self.width }
+        /// Get the height of the frames in pixels
+        pub fn height(&self) -> u16 { self.height }
+        /// Decompress a single frame into a buffer by passing a Decompressor. Returns an error if the frame is out of range
         pub fn decompress_frame<D: Decompressor>(
             &self,
             frame_number: usize,
             buffer: &mut [u8; N],
             decompressor: &D,
         ) -> Result<usize, Error<<D as Decompressor>::Error>> { /* ... */ }
-        ///Get the compressed data for a frame. Retuns error if the frame is out of range
+        /// Get the compressed data for a frame. Retuns error if the frame is out of range
         pub fn get_compressed_frame_data(
             &self,
             frame_number: usize,
         ) -> Result<&'static [u8], Error<()>> { /* ... */ }
-        ///Copy the compressed frame data into the buffer. Returns an error if the frame is out of range. On success, returns the number of bytes wrote
+        /// Copy the compressed frame data into the buffer. Returns an error if the frame is out of range. On success, returns the number of bytes wrote
         pub fn copy_compressed_frame_data_to_buffer<D: Decompressor>(
             &self,
             frame_number: usize,
             buffer: &mut [u8; N],
         ) -> { /* ... */ }
-        ///Access the animation as a FrameIterator (this method uses references so doesn't duplicate data)
+        /// Access the animation as a FrameIterator (this method uses references so doesn't duplicate data)
         pub fn as_iter(&self) -> FrameIterator { /* ... */ }
     }
     pub struct FrameIterator {
@@ -191,9 +199,9 @@ Note that in the Cargo.toml `liquid-assets-inflate` is added to `[dependencies]`
 
 ```
 [dependencies]
-liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.2.0" }
+liquid-assets-inflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.3.0" }
 [build-dependencies]
-liquid-assets-deflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.1.1" }
+liquid-assets-deflate = { git = "git@github.com:tom-flaherty/liquid-assets.git", version = "0.3.0" }
 ```
 
 ## Assets Directory Format

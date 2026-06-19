@@ -433,7 +433,7 @@ dependencies = [
 
 [[package]]
 name = "liquid-assets-deflate"
-version = "0.1.2"
+version = "0.3.0"
 dependencies = [
  "image",
  "miniz_oxide 0.9.1",
@@ -445,14 +445,14 @@ dependencies = [
 
 [[package]]
 name = "liquid-assets-inflate"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "liquid-assets-inflate-proc-macro",
 ]
 
 [[package]]
 name = "liquid-assets-inflate-proc-macro"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",
