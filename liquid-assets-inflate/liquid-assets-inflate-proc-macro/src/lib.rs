@@ -281,11 +281,11 @@ fn define_module_types() -> proc_macro2::TokenStream {
             pub fn get_comressed_data(&self) -> &'static [u8] {
                 self.data
             }
-            #[doc = "Get the width of the frames in pixels"]
+            #[doc = "Get the width of the image in pixels"]
             pub fn width(&self) -> u16 {
                 self.width
             }
-            #[doc = "Get the height of the frames in pixels"]
+            #[doc = "Get the height of the image in pixels"]
             pub fn height(&self) -> u16 {
                 self.height
             }

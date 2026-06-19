@@ -119,9 +119,9 @@ pub mod assets {
     impl StaticAsset {
         /// Get the compressed data as a slice
         pub fn get_comressed_data(&self) -> &'static [u8] { /* ... */ }
-        /// Get the width of the frames in pixels
+        /// Get the width of the image in pixels
         pub fn width(&self) -> u16 { self.width }
-        /// Get the height of the frames in pixels
+        /// Get the height of the image in pixels
         pub fn height(&self) -> u16 { self.height }
         /// Decompress the asset to the buffer by passing a Decompressor
         pub fn decompress<const N: usize, D: Decompressor>(
