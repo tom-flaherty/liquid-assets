@@ -278,15 +278,15 @@ fn define_module_types() -> proc_macro2::TokenStream {
         }
         impl StaticAsset {
             #[doc = "Get the compressed data as a slice"]
-            pub fn get_comressed_data(&self) -> &'static [u8] {
+            pub const fn get_comressed_data(&self) -> &'static [u8] {
                 self.data
             }
             #[doc = "Get the width of the image in pixels"]
-            pub fn width(&self) -> u16 {
+            pub const fn width(&self) -> u16 {
                 self.width
             }
             #[doc = "Get the height of the image in pixels"]
-            pub fn height(&self) -> u16 {
+            pub const fn height(&self) -> u16 {
                 self.height
             }
             #[doc = "Decompress the asset to the buffer by passing a Decompressor"]
